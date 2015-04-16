@@ -21,6 +21,9 @@
 #define __FLASH_H__
 
 #include <avr/pgmspace.h>
+#if ARDUINO >= 150
+typedef char prog_char __attribute__((__progmem__));
+#endif
 #if ARDUINO >= 100
 #include "Arduino.h"
 #else

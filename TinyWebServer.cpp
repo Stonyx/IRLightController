@@ -36,7 +36,7 @@ extern "C" {
 }
 
 #include <Ethernet.h>
-#include <Flash.h>
+#include "Flash.h"
 #include <SD.h>
 
 #include "TinyWebServer.h"
