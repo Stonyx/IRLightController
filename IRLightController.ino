@@ -1,10 +1,20 @@
 // Debug related definitions
 #define DEBUG
 #ifdef DEBUG
-  #define DEBUG_LOG(string) Serial.println(string);
+  #define DEBUG_BEGIN() Serial.begin(9600)
+#else
+  #define DEBUG_BEGIN()
+#ifdef DEBUG
+  #define DEBUG_LOG(string) Serial.print(string)
 #else
   #define DEBUG_LOG(string)
 #endif
+#ifdef DEBUG
+  #define DEBUG_LOG_LN(string) Serial.println(string)
+#else
+  #define DEBUG_LOG_LN(string)
+#endif
+#define DEBUG_LOG_FREE_RAM() DEBUG_LOG(F("Free RAM: ")); DEBUG_LOG_LN(FreeRam())
 
 // Define various pins
 #define SD_CARD_PIN 4
@@ -22,7 +32,6 @@
 #include <SD.h>
 #include <Time.h>
 #include <TimeAlarms.h>
-#include "TinyWebServer.h"
 #include <IRremote.h>
 
 // Define Structures
@@ -58,110 +67,128 @@ static const PROGMEM unsigned long WHITE_UP_CODE = 0x20DF32CD;
 static const PROGMEM unsigned long WHITE_DOWN_CODE = 0x20DFF807;
 
 // Define global variables
-TinyWebServer* gWebServer;
-boolean gSDCardInitialized;
 
 // Setup code
 void setup()
 {
-#ifdef DEBUG
-  // Initialize the serial communication
-  Serial.begin(9600);
-  Serial << F("Starting IR Light Controller sketch ...\n");
-  Serial << F("Free RAM: ") << FreeRam() << F("\n");
-#endif
-
+  // Initialize the serial communication for debugging
+  DEBUG_BEGIN();
+  DEBUG_LOG_LN(F("Starting IR Light Controller sketch ..."));
+  DEBUG_LOG_FREE_RAM();
+  
   // Set the two SS pins to output mode and set them both to high
   pinMode(SD_CARD_PIN, OUTPUT);
   pinMode(ETHERNET_PIN, OUTPUT);
   digitalWrite(SD_CARD_PIN, HIGH);
   digitalWrite(ETHERNET_PIN, HIGH);
 
-  // Initialize the SD card
-  DEBUG_LOG(F("Starting SD card ..."));
+  // Start the SD card
+  DEBUG_LOG_LN(F("Starting SD card ..."));
   if (!SD.begin(SD_CARD_PIN))
-  {
-    DEBUG_LOG(F("Failed to start SD card."));
-    gSDCardInitialized = false;
-  }
-  else
-  {
-    gSDCardInitialized = true;
-  }
+    DEBUG_LOG_LN(F("Failed to start SD card"));
 
-  // Initialize the ethernet  
-  DEBUG_LOG(F("Starting ethernet ..."));
+  // Start the ethernet  
+  DEBUG_LOG_LN(F("Starting ethernet ..."));
   uint8_t mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
   if (!Ethernet.begin(mac))
-    DEBUG_LOG(F("Failed to start ethernet."));
+    DEBUG_LOG_LN(F("Failed to start ethernet"));
 
-  // Start the server
-  DEBUG_LOG(F("Starting web server ..."));
-  TinyWebServer::PathHandler handlers[] = {
-    {"/", TinyWebServer::GET, &indexHandler},
-    {"/" "*", TinyWebServer::GET, &fileHandler},
-    {NULL},
-  };
-  gWebServer = new TinyWebServer(handlers, NULL, 80);
-  gWebServer->begin();
-
-#ifdef DEBUG
-  Serial << F("Free RAM: ") << FreeRam() << F("\n");
-#endif
+  // Log free memory
+  DEBUG_LOG_FREE_RAM();
 }
 
 // Function called to handle the index page
-boolean indexHandler(TinyWebServer& webServer)
+void processWebRequest()
 {
+  // Check if there's data available to read from a client
+  EthernetClient client = server.available();
+  if (client)
+  { 
+    // Loop while the client is connected
+    String url = F("");    
+    byte spacesFound = 0;
+    while (client.connected()) 
+    {
+      // Check if there's data available to read
+      if (client.available())
+      {
+        // Read a character
+        char character = client.read();
+        
+        // Check if we've read a space character (the character that seperates the three entries 
+        //   on the first line of the request header)
+        if (character == ' ' && spacesFound < 2)
+          ++spacesFound;
+          
+        // Add the character to the string (if we're reading the second entry which is found
+        //   after the first space)
+        if (spacesFound == 1)
+          url += character;
+      }
+    }
+    
+    // Check if the root is being requested
+    if (url.compareTo(F("/")) == 0)
+      url = F("/index.html");
+    
+    // Log details
+    DEBUG_LOG(F("URL requested: "));
+    DEBUG_LOG_LN(url);
+  
+    // Check if this is a file request
+    if (url.startsWith(F("/save?")) == false)
+    {
+      // Open the requsted file
+      File file = SD.open(filename);
+      if (!file)
+      {
+        // Send an error message
+        client.println(F("HTTP/1.1 404 File Not Found"));
+        client.println(F("Content-Type: text/html"));
+        client.println(F("Connection: close"));
+        
+        // Close the connection
+        delay(1);
+        client.close();
+        
+        return;
+      }
+      
+      // Send the file
+      client.println(F("HTTP/1.1 200 OK"));
+      client.println(F("Content-Type: "));
+      client.println(F("Connection: close"));
+      client.println(); 
+      while (file.available())
+      {
+        client.write(file.read());
+      }
+      file.close();      
+      
+      // Close the connection
+      delay(1);
+      client.close();
+    }
+    else
+    {
+      // Close the connection
+      delay(1);
+      client.close();
 
+      // Save the data
+      saveData(url);
+    }  
+  }
 }
 
-// Function called to handle serving files
-boolean fileHandler(TinyWebServer& webServer) 
+// Function called to save data
+void saveData(String url)
 {
-  // Check if the SD card was initialized
-  if(!gSDCardInitialized)
-  {
-    webServer.send_error_code(500);
-    webServer << F("Internal Server Error");
-    return true;
-  }
-
-  // Get the request filename
-  char* filename = TinyWebServer::get_file_from_path(webServer.get_path());
-  if(!filename) 
-  {
-    webServer.send_error_code(400);
-    webServer << F("Bad Request");
-    return true;
-  }
-
-  // Open the file
-  File file = SD.open(filename);
-  if (file)
-  {
-    // Send the file
-    webServer.send_error_code(200);
-    webServer.send_content_type(TinyWebServer::get_mime_type_from_filename(filename));
-    webServer.end_headers();
-    // webServer.send_file(file);
-    file.close();
-  }
-  else
-  {
-    webServer.send_error_code(404);
-    webServer << F("404 - File Not Found");
-  }
-
-  // Free up memory
-  free(filename);
-
-  return true;
 }
 
 // Main code
 void loop()
 {
   // Process any web requests
-  gWebServer->process();
+  processWebRequest();
 }
