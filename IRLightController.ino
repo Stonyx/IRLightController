@@ -2,16 +2,11 @@
 #define DEBUG
 #ifdef DEBUG
   #define DEBUG_BEGIN() Serial.begin(9600)
-#else
-  #define DEBUG_BEGIN()
-#ifdef DEBUG
   #define DEBUG_LOG(string) Serial.print(string)
-#else
-  #define DEBUG_LOG(string)
-#endif
-#ifdef DEBUG
   #define DEBUG_LOG_LN(string) Serial.println(string)
 #else
+  #define DEBUG_BEGIN()
+  #define DEBUG_LOG(string)
   #define DEBUG_LOG_LN(string)
 #endif
 #define DEBUG_LOG_FREE_RAM() DEBUG_LOG(F("Free RAM: ")); DEBUG_LOG_LN(FreeRam())
@@ -67,6 +62,7 @@ static const PROGMEM unsigned long WHITE_UP_CODE = 0x20DF32CD;
 static const PROGMEM unsigned long WHITE_DOWN_CODE = 0x20DFF807;
 
 // Define global variables
+EthernetServer server(80);
 
 // Setup code
 void setup()
@@ -139,7 +135,7 @@ void processWebRequest()
     if (url.startsWith(F("/save?")) == false)
     {
       // Open the requsted file
-      File file = SD.open(filename);
+      File file = SD.open(url.c_str());
       if (!file)
       {
         // Send an error message
@@ -149,7 +145,7 @@ void processWebRequest()
         
         // Close the connection
         delay(1);
-        client.close();
+        client.stop();
         
         return;
       }
@@ -167,13 +163,13 @@ void processWebRequest()
       
       // Close the connection
       delay(1);
-      client.close();
+      client.stop();
     }
     else
     {
       // Close the connection
       delay(1);
-      client.close();
+      client.stop();
 
       // Save the data
       saveData(url);
