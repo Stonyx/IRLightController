@@ -85,7 +85,7 @@ void setup()
 
   // Start the ethernet  
   DEBUG_LOG_LN(F("Starting ethernet ..."));
-  uint8_t mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+  uint8_t mac[] = { 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90 };
   if (!Ethernet.begin(mac))
     DEBUG_LOG_LN(F("Failed to start ethernet"));
 
@@ -100,9 +100,13 @@ void processWebRequest()
   EthernetClient client = server.available();
   if (client)
   { 
-    // Loop while the client is connected
-    String url = F("");    
+    // Prepare needed variables
+    char url[100];
+    memset(&url, 0, 100);
+    byte urlSize = 0;
     byte spacesFound = 0;
+
+    // Loop while the client is connected
     while (client.connected()) 
     {
       // Check if there's data available to read
@@ -118,24 +122,42 @@ void processWebRequest()
           
         // Add the character to the string (if we're reading the second entry which is found
         //   after the first space)
-        if (spacesFound == 1)
-          url += character;
+        if (spacesFound == 1 && urlSize < 100)
+        {
+          url[urlSize] = character;
+          ++urlSize;
+        }
       }
     }
     
     // Check if the root is being requested
-    if (url.compareTo(F("/")) == 0)
-      url = F("/index.html");
+    if (strcmp(url, "/") == 0)
+      strcpy(url, "/index.html");
     
     // Log details
     DEBUG_LOG(F("URL requested: "));
     DEBUG_LOG_LN(url);
   
-    // Check if this is a file request
-    if (url.startsWith(F("/save?")) == false)
+    // Check what kind of request this is
+    if (strncmp(url, "/get?", 5) == 0)
     {
+      // Get the data
+      getData(client, url);
+    }
+    else 
+    {
+      // Check if we are saving data first
+      if (strncmp(url, "/save?", 6) == 0)
+      {
+        // Save the data
+        saveData(url);
+
+        // Change the URL to the index page
+        strcpy(url, "/index.html");
+      }
+      
       // Open the requsted file
-      File file = SD.open(url.c_str());
+      File file = SD.open(url);
       if (!file)
       {
         // Send an error message
@@ -160,25 +182,21 @@ void processWebRequest()
         client.write(file.read());
       }
       file.close();      
-      
-      // Close the connection
-      delay(1);
-      client.stop();
     }
-    else
-    {
-      // Close the connection
-      delay(1);
-      client.stop();
 
-      // Save the data
-      saveData(url);
-    }  
+    // Close the connection
+    delay(1);
+    client.stop();
   }
 }
 
+// Function called to get data
+void getData(EthernetClient client, char url[])
+{  
+}
+
 // Function called to save data
-void saveData(String url)
+void saveData(char url[])
 {
 }
 
