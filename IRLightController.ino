@@ -25,12 +25,19 @@
 #include <TimeAlarms.h>
 #include <IRremote.h>
 
-// Define various constants
+// Define settings
 static const byte SD_CARD_PIN = 4;
 static const byte ETHERNET_PIN = 10;
 static const byte NTP_MAX_POLLS = 10;
 static const byte NTP_POLL_INTERVAL = 150;
 static const byte URL_MAX_LENGTH = 100;
+static const byte DST_START_MONTH = 3;
+static const byte DST_START_SUNDAY_COUNT = 2;
+static const byte DST_START_HOUR = 2;
+static const byte DST_OFFSET = 3600;
+static const byte DST_END_MONTH = 11;
+static const byte DST_END_SUNDAY_COUNT = 1;
+static const byte DST_END_HOUR = 2;
 
 // Define Structures
 struct MemorizedValues
@@ -97,12 +104,14 @@ void setup()
   DEBUG_LOG_FREE_RAM();
   
   // Start the time sync
+  DEBUG_LOG_LN(F("Synching time with NTP server ..."));
   setSyncProvider(&getNTPTime);
   setSyncInterval(3600);
+  while (timeStatus() == timeNotSet);
 }
 
 // Function called to get the time from a NTP server
-unsigned long inline getNTPTime()
+time_t getNTPTime()
 {
   // Open a UDP socket
   if (!udp.begin(8888))
@@ -141,16 +150,49 @@ unsigned long inline getNTPTime()
     udp.read();
 
   // Read the next 4 bytes
-  unsigned long time = udp.read();
+  time_t time = udp.read();
   for (byte i = 1; i < 4; ++i)
     time = time << 8 | udp.read();
 
   // Discard the rest of the packet
   udp.flush();
 
-  // TODO: figure out the timezone
+  // Adjust the time
+  time = time - 2208988800UL;
+  
+  return time + getDSTOffset(time);
+}
 
-  return time - 2208988800ul + 4 * 60 * 60;
+// Function called to get the DST offset
+time_t inline getDSTOffset(time_t utcTime)
+{   
+  // Prepare the needed variables
+  tmElements_t time;
+  time.Year = year(utcTime) - 1970;
+  time.Month = DST_START_MONTH;
+  time.Day = 1;
+  time.Hour = 0; // Can't set the time yet so that nextSunday returns the correct Sunday
+  time.Minute = 0;
+  time.Second = 0;
+
+  // Calculate the DST start time
+  time_t dstStart = makeTime(time);
+  for (byte i = 0; i < DST_START_SUNDAY_COUNT; ++i)
+    dstStart = nextSunday(dstStart);
+  dstStart += DST_START_HOUR * SECS_PER_HOUR;
+  
+  // Calculate the DST end time
+  time.Month = DST_END_MONTH;
+  time_t dstEnd = makeTime(time);
+  for (byte i = 0; i < DST_END_SUNDAY_COUNT; ++i)
+    dstEnd = nextSunday(dstEnd);
+  dstEnd += DST_END_HOUR * SECS_PER_HOUR;
+
+  // Check if we're in DST  
+  if (utcTime >= dstStart && utcTime < dstEnd) 
+    return (DST_OFFSET);
+  else 
+    return (0);
 }
 
 // Function called to handle the index page
@@ -265,4 +307,7 @@ void loop()
 {
   // Process any web requests
   processWebRequest();
+  
+  // Process any alarms
+  Alarm.delay(0);
 }
