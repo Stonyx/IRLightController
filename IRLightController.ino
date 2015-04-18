@@ -11,10 +11,6 @@
 #endif
 #define DEBUG_LOG_FREE_RAM() DEBUG_LOG(F("Free RAM: ")); DEBUG_LOG_LN(FreeRam())
 
-// Define various pins
-#define SD_CARD_PIN 4
-#define ETHERNET_PIN 10
-
 // Define NEC so that only the NEC sections of the IRRemote library are included
 #define NEC
 
@@ -28,6 +24,13 @@
 #include <Time.h>
 #include <TimeAlarms.h>
 #include <IRremote.h>
+
+// Define various constants
+static const byte SD_CARD_PIN = 4;
+static const byte ETHERNET_PIN = 10;
+static const byte NTP_MAX_POLLS = 10;
+static const byte NTP_POLL_INTERVAL = 150;
+static const byte URL_MAX_LENGTH = 100;
 
 // Define Structures
 struct MemorizedValues
@@ -63,6 +66,7 @@ static const PROGMEM unsigned long WHITE_DOWN_CODE = 0x20DFF807;
 
 // Define global variables
 EthernetServer server(80);
+EthernetUDP udp;
 
 // Setup code
 void setup()
@@ -91,18 +95,74 @@ void setup()
 
   // Log free memory
   DEBUG_LOG_FREE_RAM();
+  
+  // Start the time sync
+  setSyncProvider(&getNTPTime);
+  setSyncInterval(3600);
+}
+
+// Function called to get the time from a NTP server
+unsigned long inline getNTPTime()
+{
+  // Open a UDP socket
+  if (!udp.begin(8888))
+    return 0;
+
+  // Clear any previously received data
+  udp.flush();
+    
+  // Create the packet
+  // Note: only the first four bytes of an outgoing NTP packet need to be set
+  const unsigned long packet = 0xEC0600E3;
+  
+  // Send the NTP request
+  const IPAddress timeServer(132, 163, 4, 101);
+  if (!(udp.beginPacket(timeServer, 123) && udp.write((byte *)&packet, 48) == 48 && udp.endPacket()))
+    return 0;
+
+  // Check for a response
+  int size;
+  for (byte i = 0; i < NTP_MAX_POLLS; ++i)
+  {
+    // Check if we have a full packet waiting to be read
+    if ((size = udp.parsePacket()) >= 48)
+      break;
+    
+    // Delay 150ms
+    delay(NTP_POLL_INTERVAL);
+  }
+  
+  // Make sure we receive a full packet
+  if (size < 48)
+    return 0;    
+    
+  // Read and discard the first 40 bytes
+  for (byte i = 0; i < 40; ++i)
+    udp.read();
+
+  // Read the next 4 bytes
+  unsigned long time = udp.read();
+  for (byte i = 1; i < 4; ++i)
+    time = time << 8 | udp.read();
+
+  // Discard the rest of the packet
+  udp.flush();
+
+  // TODO: figure out the timezone
+
+  return time - 2208988800ul + 4 * 60 * 60;
 }
 
 // Function called to handle the index page
-void processWebRequest()
+void inline processWebRequest()
 {
   // Check if there's data available to read from a client
   EthernetClient client = server.available();
   if (client)
   { 
     // Prepare needed variables
-    char url[100];
-    memset(&url, 0, 100);
+    char url[URL_MAX_LENGTH];
+    memset(&url, 0, URL_MAX_LENGTH);
     byte urlSize = 0;
     byte spacesFound = 0;
 
@@ -150,7 +210,7 @@ void processWebRequest()
       if (strncmp(url, "/save?", 6) == 0)
       {
         // Save the data
-        saveData(url);
+        saveData(client, url);
 
         // Change the URL to the index page
         strcpy(url, "/index.html");
@@ -191,12 +251,12 @@ void processWebRequest()
 }
 
 // Function called to get data
-void getData(EthernetClient client, char url[])
+void inline getData(EthernetClient client, char url[])
 {  
 }
 
 // Function called to save data
-void saveData(char url[])
+void inline saveData(EthernetClient client, char url[])
 {
 }
 
