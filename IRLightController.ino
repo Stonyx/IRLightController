@@ -30,7 +30,7 @@
 #define ETHERNET_PIN 10
 #define NTP_MAX_POLLS 10
 #define NTP_POLL_INTERVAL 150 // In milliseconds
-#define URL_MAX_LENGTH 100
+#define URL_MAX_LENGTH 50
 #define TIMEZONE_OFFSET (4 * SECS_PER_HOUR) // In seconds
 #define DST_START_MONTH 3
 #define DST_START_DAY (14 - ((1 + current.Year * 5 / 4) % 7))
@@ -206,10 +206,13 @@ void inline processWebRequest()
   if (client)
   { 
     // Prepare needed variables
+    char character = '\0';
+    char previousCharacter;
+    byte spacesFound = 0;
+    byte sequencialEOLsFound = 0;
     char string[URL_MAX_LENGTH];
     memset(&string, 0, URL_MAX_LENGTH);
     byte stringLength = 0;
-    byte spacesFound = 0;
 
     // Loop while the client is connected
     while (client.connected()) 
@@ -218,7 +221,8 @@ void inline processWebRequest()
       if (client.available())
       {
         // Read a character
-        char character = client.read();
+        previousCharacter = character;
+        character = client.read();
 
         // Log details
         DEBUG_LOG(F("Read '"));
@@ -235,8 +239,8 @@ void inline processWebRequest()
           // Check if we've just finished reading the first entry
           if (spacesFound == 1)
           {
-            // Make sure this is a GET request
-            if (strcasecmp(string, "GET") != 0)
+            // Make sure this is a GET or POST request
+            if (strcasecmp(string, "GET") != 0 && strcasecmp(string, "POST") != 0)
             {
               // Send an error message
               client.println(F("HTTP/1.1 405 Method Not Allowed"));
@@ -254,6 +258,23 @@ void inline processWebRequest()
             memset(&string, 0, URL_MAX_LENGTH);
             stringLength = 0;
           }
+        }
+        else if ((character == '\r' || character == '\n') && 
+            (previousCharacter == '\r' || previousCharacter == '\n'))
+        {
+          // Increment the sequencial end of line counter
+          ++sequencialEOLsFound;
+          
+          // Check if we've just finished reading all the headers
+          if (sequencialEOLsFound == 4)
+          {
+            break;
+          }
+        }
+        else
+        {
+          // Reset the sequencial end of line counter
+          sequencialEOLsFound = 0;
         }
           
         // Add the character to the string (if we're reading the first or second entry)
@@ -314,26 +335,18 @@ void inline processWebRequest()
       
       // Figure out the content type
       const __FlashStringHelper* type;
-      if (stringLength > 6)
-      {
-        if (strcasecmp(string + stringLength - 5, ".html") == 0)
-          type = F("text/html");
-        else if (strcasecmp(string + stringLength - 5, ".jpeg") == 0)
-          type = F("image/jpeg");
-      }
-      else if (stringLength > 5)
-      {
-        if (strcasecmp(string + stringLength - 4, ".css") == 0)
-          type = F("text/css");
-        else if (strcasecmp(string + stringLength - 4, ".jpg") == 0)
-          type = F("image/jpeg");
-        else if (strcasecmp(string + stringLength - 4, ".png") == 0)
-          type = F("image/png");
-      }
-      else if (stringLength > 4 && strcasecmp(string + stringLength - 3, ".js") == 0)
-      {
+      if (strcasecmp(string + stringLength - 5, ".html") == 0)
+        type = F("text/html");
+      else if (strcasecmp(string + stringLength - 4, ".css") == 0)
+        type = F("text/css");
+      else if (strcasecmp(string + stringLength - 3, ".js") == 0)
         type = F("text/javascript");
-      }
+      else if (strcasecmp(string + stringLength - 5, ".jpeg") == 0)
+        type = F("image/jpeg");
+      else if (strcasecmp(string + stringLength - 4, ".jpg") == 0)
+        type = F("image/jpeg");
+      else if (strcasecmp(string + stringLength - 4, ".png") == 0)
+        type = F("image/png");
       
       // Send the file
       client.println(F("HTTP/1.1 200 OK"));
