@@ -1,5 +1,5 @@
 // Debug related definitions
-// #define DEBUG
+#define DEBUG
 #ifdef DEBUG
   #define DEBUG_BEGIN() Serial.begin(9600)
   #define DEBUG_LOG(string) Serial.print(string)
@@ -26,16 +26,16 @@
 #include <IRremote.h>
 
 // Define settings
-static const byte SD_CARD_PIN = 4;
-static const byte ETHERNET_PIN = 10;
-static const byte NTP_MAX_POLLS = 10;
-static const byte NTP_POLL_INTERVAL = 150;
-static const byte URL_MAX_LENGTH = 100;
-#define TIMEZONE_OFFSET (4 * SECS_PER_HOUR)
+#define SD_CARD_PIN 4
+#define ETHERNET_PIN 10
+#define NTP_MAX_POLLS 10
+#define NTP_POLL_INTERVAL 150 // Specified in milliseconds
+#define URL_MAX_LENGTH 100 // Must be evenly divisible by 5 and at least 60 characters
+#define TIMEZONE_OFFSET (4 * SECS_PER_HOUR) // Specified in seconds
 #define DST_START_MONTH 3
 #define DST_START_DAY (14 - ((1 + current.Year * 5 / 4) % 7))
 #define DST_START_HOUR 2
-#define DST_OFFSET (1 * SECS_PER_HOUR)
+#define DST_OFFSET (1 * SECS_PER_HOUR) // Specified in seconds
 #define DST_END_MONTH 11
 #define DST_END_DAY (7 - ((1 + current.Year * 5 / 4) % 7))
 #define DST_END_HOUR 2
@@ -206,9 +206,10 @@ void inline processWebRequest()
   if (client)
   { 
     // Prepare needed variables
-    char url[URL_MAX_LENGTH];
-    memset(&url, 0, URL_MAX_LENGTH);
-    byte urlSize = 0;
+    char* string = (char*)malloc(URL_MAX_LENGTH / 5);
+    memset(&string, 0, URL_MAX_LENGTH / 5);
+    byte stringSize = 0;
+    byte stringMaxSize = URL_MAX_LENGTH / 5;
     byte spacesFound = 0;
 
     // Loop while the client is connected
@@ -223,48 +224,88 @@ void inline processWebRequest()
         // Check if we've read a space character (the character that seperates the three entries 
         //   on the first line of the request header)
         if (character == ' ' && spacesFound < 2)
-          ++spacesFound;
-          
-        // Add the character to the string (if we're reading the second entry which is found
-        //   after the first space)
-        if (spacesFound == 1 && urlSize < 100)
         {
-          url[urlSize] = character;
-          ++urlSize;
+          // Increment the space counter
+          ++spacesFound;
+
+          // Check if we've just finished reading the first entry
+          if (spacesFound == 1)
+          {
+            // Make sure this is a GET request
+            if (strcasecmp(string, "GET") != 0)
+            {
+              // Free memory
+              free(string);
+            
+              // Send an error message
+              client.println(F("HTTP/1.1 405 Method Not Allowed"));
+              client.println(F("Content-Type: text/html"));
+              client.println(F("Connection: close"));
+              
+              // Close the connection
+              delay(1);
+              client.stop();
+              
+              return;
+            }
+            
+            // Clear the string to start reading the next entry
+            memset(&string, 0, stringMaxSize);     
+          }
+        }
+          
+        // Add the character to the string (if we're reading the first or second entry)
+        if (spacesFound < 2 && stringSize < URL_MAX_LENGTH - 1)
+        {
+          // Add the character to the string and increase the size counter
+          string[stringSize] = character;
+          ++stringSize;
+          
+          // Check if we have to increase the size of the string
+          if (stringSize == stringMaxSize)
+          {
+            // Allocate more memory for the string, zero out the new memory, and adjust the max string size
+            realloc(string, URL_MAX_LENGTH / 5);
+            memset(string + stringSize, 0, URL_MAX_LENGTH / 5);
+            stringMaxSize += URL_MAX_LENGTH / 5;
+          }
         }
       }
     }
     
     // Check if the root is being requested
-    if (strcmp(url, "/") == 0)
-      strcpy(url, "/index.html");
+    if (strcmp(string, "/") == 0)
+      strcpy(string, "/index.html");
     
     // Log details
     DEBUG_LOG(F("URL requested: "));
-    DEBUG_LOG_LN(url);
+    DEBUG_LOG_LN(string);
   
     // Check what kind of request this is
-    if (strncmp(url, "/get?", 5) == 0)
+    if (strncasecmp(string, "/get?", 5) == 0)
     {
       // Get the data
-      getData(client, url);
+      getData(client, string);
     }
     else 
     {
       // Check if we are saving data first
-      if (strncmp(url, "/save?", 6) == 0)
+      if (strncasecmp(string, "/save?", 6) == 0)
       {
         // Save the data
-        saveData(client, url);
+        saveData(client, string);
 
         // Change the URL to the index page
-        strcpy(url, "/index.html");
+        strcpy(string, "/index.html");
       }
       
       // Open the requsted file
-      File file = SD.open(url);
+      File file = SD.open(string);
       if (!file)
       {
+        // Free memory
+        free(string);
+      
         // Send an error message
         client.println(F("HTTP/1.1 404 File Not Found"));
         client.println(F("Content-Type: text/html"));
@@ -288,6 +329,9 @@ void inline processWebRequest()
       }
       file.close();      
     }
+  
+    // Free memory
+    free(string);
 
     // Close the connection
     delay(1);
