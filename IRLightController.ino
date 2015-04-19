@@ -1,5 +1,5 @@
 // Debug related definitions
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
   #define DEBUG_BEGIN() Serial.begin(9600)
   #define DEBUG_LOG(string) Serial.print(string)
@@ -31,13 +31,14 @@ static const byte ETHERNET_PIN = 10;
 static const byte NTP_MAX_POLLS = 10;
 static const byte NTP_POLL_INTERVAL = 150;
 static const byte URL_MAX_LENGTH = 100;
-static const byte DST_START_MONTH = 3;
-static const byte DST_START_SUNDAY_COUNT = 2;
-static const byte DST_START_HOUR = 2;
-static const byte DST_OFFSET = 3600;
-static const byte DST_END_MONTH = 11;
-static const byte DST_END_SUNDAY_COUNT = 1;
-static const byte DST_END_HOUR = 2;
+#define TIMEZONE_OFFSET (4 * SECS_PER_HOUR)
+#define DST_START_MONTH 3
+#define DST_START_DAY (14 - ((1 + current.Year * 5 / 4) % 7))
+#define DST_START_HOUR 2
+#define DST_OFFSET (1 * SECS_PER_HOUR)
+#define DST_END_MONTH 11
+#define DST_END_DAY (7 - ((1 + current.Year * 5 / 4) % 7))
+#define DST_END_HOUR 2
 
 // Define Structures
 struct MemorizedValues
@@ -72,8 +73,7 @@ static const PROGMEM unsigned long WHITE_UP_CODE = 0x20DF32CD;
 static const PROGMEM unsigned long WHITE_DOWN_CODE = 0x20DFF807;
 
 // Define global variables
-EthernetServer server(80);
-EthernetUDP udp;
+static EthernetServer server(80);
 
 // Setup code
 void setup()
@@ -100,22 +100,31 @@ void setup()
   if (!Ethernet.begin(mac))
     DEBUG_LOG_LN(F("Failed to start ethernet"));
 
-  // Log free memory
-  DEBUG_LOG_FREE_RAM();
+  // Start the server
+  DEBUG_LOG_LN(F("Starting server ..."));
+  server.begin();
   
   // Start the time sync
   DEBUG_LOG_LN(F("Synching time with NTP server ..."));
   setSyncProvider(&getNTPTime);
   setSyncInterval(3600);
   while (timeStatus() == timeNotSet);
+  
+  // Log free memory
+  DEBUG_LOG_FREE_RAM();
 }
 
 // Function called to get the time from a NTP server
-time_t getNTPTime()
+unsigned long getNTPTime()
 {
   // Open a UDP socket
+  DEBUG_LOG_LN(F("Opening UDP port ..."));
+  EthernetUDP udp;
   if (!udp.begin(8888))
+  {
+    DEBUG_LOG_LN(F("Failed to open UDP port"));
     return 0;
+  }
 
   // Clear any previously received data
   udp.flush();
@@ -125,11 +134,16 @@ time_t getNTPTime()
   const unsigned long packet = 0xEC0600E3;
   
   // Send the NTP request
-  const IPAddress timeServer(132, 163, 4, 101);
+  DEBUG_LOG_LN(F("Sending UDP packet ..."));
+  const char timeServer[] = "pool.ntp.org";
   if (!(udp.beginPacket(timeServer, 123) && udp.write((byte *)&packet, 48) == 48 && udp.endPacket()))
+  {
+    DEBUG_LOG_LN(F("Failed to send UDP packet"));
     return 0;
+  }
 
   // Check for a response
+  DEBUG_LOG_LN(F("Checking for response ..."));
   int size;
   for (byte i = 0; i < NTP_MAX_POLLS; ++i)
   {
@@ -140,6 +154,11 @@ time_t getNTPTime()
     // Delay 150ms
     delay(NTP_POLL_INTERVAL);
   }
+  
+  // Log details
+  DEBUG_LOG(F("Received "));
+  DEBUG_LOG(size);
+  DEBUG_LOG_LN(F(" byte(s)"));
   
   // Make sure we receive a full packet
   if (size < 48)
@@ -156,43 +175,27 @@ time_t getNTPTime()
 
   // Discard the rest of the packet
   udp.flush();
+  
+  // Close the UPD connection
+  udp.stop();
 
   // Adjust the time
-  time = time - 2208988800UL;
+  time = time - 2208988800UL + TIMEZONE_OFFSET;
   
-  return time + getDSTOffset(time);
-}
+  // Adjust for DST
+  TimeElements current;
+  breakTime(time, current);
+  if ((current.Month > DST_START_MONTH && current.Month < DST_END_MONTH) || 
+      (current.Month == DST_START_MONTH && current.Day >= DST_START_DAY && current.Hour >= DST_START_HOUR) ||
+      (current.Month == DST_END_MONTH && current.Day <= DST_END_DAY && current.Hour < DST_END_HOUR - 
+      (DST_OFFSET / SECS_PER_HOUR)))
+    time = time + DST_OFFSET;
 
-// Function called to get the DST offset
-time_t inline getDSTOffset(time_t utcTime)
-{   
-  // Prepare the needed variables
-  tmElements_t time;
-  time.Year = year(utcTime) - 1970;
-  time.Month = DST_START_MONTH;
-  time.Day = 1;
-  time.Hour = 0; // Can't set the time yet so that nextSunday returns the correct Sunday
-  time.Minute = 0;
-  time.Second = 0;
-
-  // Calculate the DST start time
-  time_t dstStart = makeTime(time);
-  for (byte i = 0; i < DST_START_SUNDAY_COUNT; ++i)
-    dstStart = nextSunday(dstStart);
-  dstStart += DST_START_HOUR * SECS_PER_HOUR;
+  // Log details
+  DEBUG_LOG(F("Received/Calculated Unix time: "));
+  DEBUG_LOG_LN(time);
   
-  // Calculate the DST end time
-  time.Month = DST_END_MONTH;
-  time_t dstEnd = makeTime(time);
-  for (byte i = 0; i < DST_END_SUNDAY_COUNT; ++i)
-    dstEnd = nextSunday(dstEnd);
-  dstEnd += DST_END_HOUR * SECS_PER_HOUR;
-
-  // Check if we're in DST  
-  if (utcTime >= dstStart && utcTime < dstEnd) 
-    return (DST_OFFSET);
-  else 
-    return (0);
+  return time;
 }
 
 // Function called to handle the index page
