@@ -29,13 +29,13 @@
 #define SD_CARD_PIN 4
 #define ETHERNET_PIN 10
 #define NTP_MAX_POLLS 10
-#define NTP_POLL_INTERVAL 150 // Specified in milliseconds
-#define URL_MAX_LENGTH 100 // Must be evenly divisible by 5 and at least 60 characters
-#define TIMEZONE_OFFSET (4 * SECS_PER_HOUR) // Specified in seconds
+#define NTP_POLL_INTERVAL 150 // In milliseconds
+#define URL_MAX_LENGTH 100
+#define TIMEZONE_OFFSET (4 * SECS_PER_HOUR) // In seconds
 #define DST_START_MONTH 3
 #define DST_START_DAY (14 - ((1 + current.Year * 5 / 4) % 7))
 #define DST_START_HOUR 2
-#define DST_OFFSET (1 * SECS_PER_HOUR) // Specified in seconds
+#define DST_OFFSET (1 * SECS_PER_HOUR) // In seconds
 #define DST_END_MONTH 11
 #define DST_END_DAY (7 - ((1 + current.Year * 5 / 4) % 7))
 #define DST_END_HOUR 2
@@ -206,10 +206,9 @@ void inline processWebRequest()
   if (client)
   { 
     // Prepare needed variables
-    char* string = (char*)malloc(URL_MAX_LENGTH / 5);
-    memset(&string, 0, URL_MAX_LENGTH / 5);
-    byte stringSize = 0;
-    byte stringMaxSize = URL_MAX_LENGTH / 5;
+    char string[URL_MAX_LENGTH];
+    memset(&string, 0, URL_MAX_LENGTH);
+    byte stringLength = 0;
     byte spacesFound = 0;
 
     // Loop while the client is connected
@@ -220,6 +219,11 @@ void inline processWebRequest()
       {
         // Read a character
         char character = client.read();
+
+        // Log details
+        DEBUG_LOG(F("Read '"));
+        DEBUG_LOG(character);
+        DEBUG_LOG_LN(F("' character from request header"));
         
         // Check if we've read a space character (the character that seperates the three entries 
         //   on the first line of the request header)
@@ -234,9 +238,6 @@ void inline processWebRequest()
             // Make sure this is a GET request
             if (strcasecmp(string, "GET") != 0)
             {
-              // Free memory
-              free(string);
-            
               // Send an error message
               client.println(F("HTTP/1.1 405 Method Not Allowed"));
               client.println(F("Content-Type: text/html"));
@@ -250,31 +251,27 @@ void inline processWebRequest()
             }
             
             // Clear the string to start reading the next entry
-            memset(&string, 0, stringMaxSize);     
+            memset(&string, 0, URL_MAX_LENGTH);
+            stringLength = 0;
           }
         }
           
         // Add the character to the string (if we're reading the first or second entry)
-        if (spacesFound < 2 && stringSize < URL_MAX_LENGTH - 1)
+        if (spacesFound < 2 && stringLength < URL_MAX_LENGTH - 1)
         {
           // Add the character to the string and increase the size counter
-          string[stringSize] = character;
-          ++stringSize;
-          
-          // Check if we have to increase the size of the string
-          if (stringSize == stringMaxSize)
-          {
-            // Allocate more memory for the string, zero out the new memory, and adjust the max string size
-            realloc(string, URL_MAX_LENGTH / 5);
-            memset(string + stringSize, 0, URL_MAX_LENGTH / 5);
-            stringMaxSize += URL_MAX_LENGTH / 5;
-          }
+          string[stringLength] = character;
+          ++stringLength;
         }
+        
+        // Log details
+        DEBUG_LOG(F("String content: "));
+        DEBUG_LOG_LN(string);
       }
     }
     
     // Check if the root is being requested
-    if (strcmp(string, "/") == 0)
+    if (strcasecmp(string, "/") == 0)
       strcpy(string, "/index.html");
     
     // Log details
@@ -303,9 +300,6 @@ void inline processWebRequest()
       File file = SD.open(string);
       if (!file)
       {
-        // Free memory
-        free(string);
-      
         // Send an error message
         client.println(F("HTTP/1.1 404 File Not Found"));
         client.println(F("Content-Type: text/html"));
@@ -318,9 +312,33 @@ void inline processWebRequest()
         return;
       }
       
+      // Figure out the content type
+      const __FlashStringHelper* type;
+      if (stringLength > 6)
+      {
+        if (strcasecmp(string + stringLength - 5, ".html") == 0)
+          type = F("text/html");
+        else if (strcasecmp(string + stringLength - 5, ".jpeg") == 0)
+          type = F("image/jpeg");
+      }
+      else if (stringLength > 5)
+      {
+        if (strcasecmp(string + stringLength - 4, ".css") == 0)
+          type = F("text/css");
+        else if (strcasecmp(string + stringLength - 4, ".jpg") == 0)
+          type = F("image/jpeg");
+        else if (strcasecmp(string + stringLength - 4, ".png") == 0)
+          type = F("image/png");
+      }
+      else if (stringLength > 4 && strcasecmp(string + stringLength - 3, ".js") == 0)
+      {
+        type = F("text/javascript");
+      }
+      
       // Send the file
       client.println(F("HTTP/1.1 200 OK"));
-      client.println(F("Content-Type: "));
+      client.print(F("Content-Type: "));
+      client.println(type);
       client.println(F("Connection: close"));
       client.println(); 
       while (file.available())
@@ -329,9 +347,6 @@ void inline processWebRequest()
       }
       file.close();      
     }
-  
-    // Free memory
-    free(string);
 
     // Close the connection
     delay(1);
