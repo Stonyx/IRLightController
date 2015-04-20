@@ -140,12 +140,12 @@ void setup()
   if (!Ethernet.begin(mac))
     DEBUG_LOG_LN(F("Failed to start ethernet"));
 
-  // Start the gServer
-  DEBUG_LOG_LN(F("Starting gServer ..."));
+  // Start the server
+  DEBUG_LOG_LN(F("Starting server ..."));
   gServer.begin();
   
   // Start the time sync
-  DEBUG_LOG_LN(F("Synching time with NTP gServer ..."));
+  DEBUG_LOG_LN(F("Synching time with NTP server ..."));
   setSyncProvider(&getNTPTime);
   setSyncInterval(3600);
   while (timeStatus() == timeNotSet);
@@ -154,7 +154,7 @@ void setup()
   DEBUG_LOG_FREE_RAM();
 }
 
-// Function called to get the time from a NTP gServer
+// Function called to get the time from a NTP server
 unsigned long getNTPTime()
 {
   // Open a UDP socket
@@ -175,8 +175,8 @@ unsigned long getNTPTime()
   
   // Send the NTP request
   DEBUG_LOG_LN(F("Sending UDP packet ..."));
-  const char timegServer[] = "pool.ntp.org";
-  if (!(udp.beginPacket(timegServer, 123) && udp.write((byte *)&packet, 48) == 48 && udp.endPacket()))
+  const char timeServer[] = "pool.ntp.org";
+  if (!(udp.beginPacket(timeServer, 123) && udp.write((byte *)&packet, 48) == 48 && udp.endPacket()))
   {
     DEBUG_LOG_LN(F("Failed to send UDP packet"));
     return 0;
