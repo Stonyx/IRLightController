@@ -22,7 +22,6 @@
 #include <Dhcp.h>
 #include <SD.h>
 #include <Time.h>
-#include <TimeAlarms.h>
 #include <IRremote.h>
 
 // Define settings
@@ -74,6 +73,14 @@
 #define DYNAMIC_FADE_CODE 0x20DFE817
 
 // Define IR codes for Current USA Satelite Plus & Plus Pro fixtures
+
+// Define EEPROM locations
+#define MEMORY_VALUES_LOCATION_BEGIN 0
+#define MEMORY_VALUES_LOCATION_END (MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) * MEMORY_VALUES_COUNT)
+#define MEMORY_SCHEDULE_LOCATION_BEGIN MEMORY_VALUES_LOCATION_END
+#define MEMORY_SCHEDULE_LOCATION_END (MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT)
+#define TIMER_SCHEDULE_LOCATION_BEGIN MEMORY_SCHEDULE_LOCATION_END
+#define TIMER_SCHEDULE_LOCATION_END (TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * TIMER_SCHEDULE_COUNT)
 
 // Define Structures
 struct MemoryValues
@@ -149,7 +156,7 @@ void setup()
   setSyncProvider(&getNTPTime);
   setSyncInterval(3600);
   while (timeStatus() == timeNotSet);
-  
+
   // Log free memory
   DEBUG_LOG_FREE_RAM();
 }
@@ -349,28 +356,30 @@ void inline processWebRequest()
       // Figure out which data is being requested
       if (strcasecmp(string + stringLength - 7, "?memval") == 0)
       {
-        for (unsigned short i = 0; i < sizeof(MemoryValues) * MEMORY_VALUES_COUNT; ++i)
+        for (unsigned short i = MEMORY_VALUES_LOCATION_BEGIN; i < MEMORY_VALUES_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
         }
       }
       else if (strcasecmp(string + stringLength - 9, "?memsched") == 0)
       {
-        for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT; 
-            i < sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT; ++i)
+        for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
         }
       }
       else if (strcasecmp(string + stringLength - 10, "?timesched") == 0)
       {
-        for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT + 
-            sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT;
-            i < sizeof(TimerSchedule) * TIMER_SCHEDULE_COUNT; ++i)
+        for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
         }
       }    
+    }
+    else if (strcasecmp(string, "/restart") == 0)
+    {
+      // Do a soft restart
+      asm volatile("jmp 0");
     }
     else 
     {
@@ -380,24 +389,21 @@ void inline processWebRequest()
         // Figure out which data is being saved
         if (strcasecmp(string + stringLength - 7, "?memval") == 0)
         {
-          for (unsigned short i = 0; i < sizeof(MemoryValues) * MEMORY_VALUES_COUNT; ++i)
+          for (unsigned short i = MEMORY_VALUES_LOCATION_BEGIN; i < MEMORY_VALUES_LOCATION_END; ++i)
           {
             EEPROM.update(client.read(), i);
           }
         }
         else if (strcasecmp(string + stringLength - 9, "?memsched") == 0)
         {
-          for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT; 
-              i < sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT; ++i)
+          for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
           {
             EEPROM.update(client.read(), i);
           }
         }
         else if (strcasecmp(string + stringLength - 10, "?timesched") == 0)
         {
-          for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT + 
-              sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT;
-              i < sizeof(TimerSchedule) * TIMER_SCHEDULE_COUNT; ++i)
+          for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
           {
             EEPROM.update(client.read(), i);
           }
@@ -475,8 +481,8 @@ void loop()
   for (i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
   {
     // Read the schedule entry
-    MemorySchedule schedule = EEPROM.get(sizeof(MemoryValues) * MEMORY_VALUES_COUNT + 
-        sizeof(MemorySchedule) * i, schedule);
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+        schedule);
     
     // Check if this schedule is active
     if (schedule.active == false)
@@ -510,10 +516,10 @@ void loop()
   if (i > MEMORY_SCHEDULE_COUNT)
   {
     // Read the previous and next schedule values
-    MemoryValues prevValues = EEPROM.get(sizeof(MemoryValues) * EEPROM.read(sizeof(MemoryValues) * 
-        MEMORY_VALUES_COUNT + sizeof(MemorySchedule) * prevSchedule), prevValues);
-    MemoryValues nextValues = EEPROM.get(sizeof(MemoryValues) * EEPROM.read(sizeof(MemoryValues) *
-        MEMORY_VALUES_COUNT + sizeof(MemorySchedule) * nextSchedule), nextValues);
+    MemoryValues prevValues = EEPROM.get(MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) *
+        EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), prevValues);
+    MemoryValues nextValues = EEPROM.get(MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) * 
+        EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule), nextValues);
   
     // Calculate what the various colors should be at this point in time
     byte calcRedValue = prevValues.red + ((float)(nextScheduleStart - currentTime) / 
@@ -521,7 +527,4 @@ void loop()
     byte calcGreenValue = prevValues.green + ((float)(nextScheduleStart - currentTime) / 
         ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.green - prevValues.green)));
   }
-  
-  // Process any alarms
-  Alarm.delay(0);
 }
