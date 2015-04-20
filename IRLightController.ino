@@ -30,7 +30,6 @@
 #define ETHERNET_PIN 10
 #define NTP_MAX_POLLS 10
 #define NTP_POLL_INTERVAL 150 // In milliseconds
-#define URL_MAX_LENGTH 50
 #define TIMEZONE_OFFSET (4 * SECS_PER_HOUR) // In seconds
 #define DST_START_MONTH 3
 #define DST_START_DAY (14 - ((1 + current.Year * 5 / 4) % 7))
@@ -39,41 +38,82 @@
 #define DST_END_MONTH 11
 #define DST_END_DAY (7 - ((1 + current.Year * 5 / 4) % 7))
 #define DST_END_HOUR 2
+#define URL_MAX_LENGTH 50
+#define MEMORY_VALUES_COUNT 5
+#define MEMORY_SCHEDULE_COUNT 10
+#define TIMER_SCHEDULE_COUNT 10
+
+// Define IR codes for Ecoxotic E-Series fixtures
+#define SET_CLOCK_CODE 0x20DF3AC5
+#define ON_TIME_CODE 0x20DFBA45
+#define OFF_TIME_CODE 0x20DF827D
+#define POWER_CODE 0x20DF02FD
+#define HOUR_UP_CODE 0x20DF1AE5
+#define MINUTE_DOWN_CODE 0x20DF9A65
+#define ENTER_CODE 0x20DFA25D
+#define RESUME_CODE 0x20DF22DD
+#define SUNLIGHT_CODE 0x20DF2AD5
+#define FULL_SPECTRUM_CODE 0x20DFAA55
+#define CRISP_BLUE_CODE 0x20DF926D
+#define DEEP_WATER_CODE 0x20DF12ED
+#define RED_UP_CODE 0x20DF0AF5
+#define GREEN_UP_CODE 0x20DF8A75
+#define BLUE_UP_CODE 0x20DFB24D
+#define WHITE_UP_CODE 0x20DF32CD
+#define RED_DOWN_CODE 0x20DF38C7
+#define GREEN_DOWN_CODE 0x20DFB847
+#define BLUE_DOWN_CODE 0x20DF7887
+#define WHITE_DOWN_CODE 0x20DFF807
+#define M1_CODE 0x20DF18E7
+#define M2_CODE 0x20DF9867
+#define DAYLIGHT_CODE 0x20DF58A7
+#define MOON_CODE 0x20DFD827
+#define DYNAMIC_MOON_CODE 0x20DF28D7
+#define DYNAMIC_LIGHTNING_CODE 0x20DFA857
+#define DYNAMIC_CLOUD_CODE 0x20DF6897
+#define DYNAMIC_FADE_CODE 0x20DFE817
+
+// Define IR codes for Current USA Satelite Plus & Plus Pro fixtures
 
 // Define Structures
-struct MemorizedValues
+struct MemoryValues
 {  
+  byte button;
   byte red;
   byte green;
   byte blue;
   byte white;
 };
-struct TimerEntries
+struct MemorySchedule
 {
-  byte code;
+  byte number;
+  bool active;
+  byte weekday;
+  byte hour;
+  byte minute;
+  byte second;
+  unsigned long duration;
+};
+struct TimerSchedule
+{
+  byte button;
+  bool active;
   byte weekday;
   byte hour;
   byte minute;
   byte second;
 };
-
-// Define global variables stored in ROM
-static const PROGMEM unsigned long POWER_CODE = 0x20DF02FD;
-static const PROGMEM unsigned long DAYLIGHT_CODE = 0x20DF58A7;
-static const PROGMEM unsigned long M1_CODE = 0x20DF18E7;
-static const PROGMEM unsigned long M2_CODE = 0x20DF9867;
-static const PROGMEM unsigned long MOON_CODE = 0x20DFD827;
-static const PROGMEM unsigned long RED_UP_CODE = 0x20DF0AF5;
-static const PROGMEM unsigned long RED_DOWN_CODE = 0x20DF38C7;
-static const PROGMEM unsigned long GREEN_UP_CODE = 0x20DF8A75;
-static const PROGMEM unsigned long GREEN_DOWN_CODE = 0x20DFB847;
-static const PROGMEM unsigned long BLUE_UP_CODE = 0x20DFB24D;
-static const PROGMEM unsigned long BLUE_DOWN_CODE = 0x20DF7887;
-static const PROGMEM unsigned long WHITE_UP_CODE = 0x20DF32CD;
-static const PROGMEM unsigned long WHITE_DOWN_CODE = 0x20DFF807;
+struct ColorValues
+{
+  byte red;
+  byte green;
+  byte glue;
+  byte white;
+};
 
 // Define global variables
-static EthernetServer server(80);
+static EthernetServer gServer(80);
+ColorValues gCurrentColorValues;
 
 // Setup code
 void setup()
@@ -100,12 +140,12 @@ void setup()
   if (!Ethernet.begin(mac))
     DEBUG_LOG_LN(F("Failed to start ethernet"));
 
-  // Start the server
-  DEBUG_LOG_LN(F("Starting server ..."));
-  server.begin();
+  // Start the gServer
+  DEBUG_LOG_LN(F("Starting gServer ..."));
+  gServer.begin();
   
   // Start the time sync
-  DEBUG_LOG_LN(F("Synching time with NTP server ..."));
+  DEBUG_LOG_LN(F("Synching time with NTP gServer ..."));
   setSyncProvider(&getNTPTime);
   setSyncInterval(3600);
   while (timeStatus() == timeNotSet);
@@ -114,7 +154,7 @@ void setup()
   DEBUG_LOG_FREE_RAM();
 }
 
-// Function called to get the time from a NTP server
+// Function called to get the time from a NTP gServer
 unsigned long getNTPTime()
 {
   // Open a UDP socket
@@ -135,8 +175,8 @@ unsigned long getNTPTime()
   
   // Send the NTP request
   DEBUG_LOG_LN(F("Sending UDP packet ..."));
-  const char timeServer[] = "pool.ntp.org";
-  if (!(udp.beginPacket(timeServer, 123) && udp.write((byte *)&packet, 48) == 48 && udp.endPacket()))
+  const char timegServer[] = "pool.ntp.org";
+  if (!(udp.beginPacket(timegServer, 123) && udp.write((byte *)&packet, 48) == 48 && udp.endPacket()))
   {
     DEBUG_LOG_LN(F("Failed to send UDP packet"));
     return 0;
@@ -202,14 +242,14 @@ unsigned long getNTPTime()
 void inline processWebRequest()
 {
   // Check if there's data available to read from a client
-  EthernetClient client = server.available();
+  EthernetClient client = gServer.available();
   if (client)
   { 
     // Prepare needed variables
     char character = '\0';
-    char previousCharacter;
+    char prevCharacter = '\0';
     byte spacesFound = 0;
-    byte sequencialEOLsFound = 0;
+    byte sequencialNewLinesFound = 0;
     char string[URL_MAX_LENGTH];
     memset(&string, 0, URL_MAX_LENGTH);
     byte stringLength = 0;
@@ -221,7 +261,7 @@ void inline processWebRequest()
       if (client.available())
       {
         // Read a character
-        previousCharacter = character;
+        prevCharacter = character;
         character = client.read();
 
         // Log details
@@ -229,9 +269,9 @@ void inline processWebRequest()
         DEBUG_LOG(character);
         DEBUG_LOG_LN(F("' character from request header"));
         
-        // Check if we've read a space character (the character that seperates the three entries 
-        //   on the first line of the request header)
-        if (character == ' ' && spacesFound < 2)
+        // Check if we're at a seperation point between the three entries on the first line of
+        //   the request header
+        if (character == ' ' && prevCharacter != '\0' && prevCharacter != ' ' && spacesFound < 2)
         {
           // Increment the space counter
           ++spacesFound;
@@ -259,22 +299,21 @@ void inline processWebRequest()
             stringLength = 0;
           }
         }
-        else if ((character == '\r' || character == '\n') && 
-            (previousCharacter == '\r' || previousCharacter == '\n'))
+        else if (character == '\n')
         {
-          // Increment the sequencial end of line counter
-          ++sequencialEOLsFound;
+          // Increment the sequencial new line counter
+          ++sequencialNewLinesFound;
           
           // Check if we've just finished reading all the headers
-          if (sequencialEOLsFound == 4)
+          if (sequencialNewLinesFound == 2)
           {
             break;
           }
         }
-        else
+        else if (character != '\r' && character != '\n')
         {
-          // Reset the sequencial end of line counter
-          sequencialEOLsFound = 0;
+          // Reset the sequencial new line counter
+          sequencialNewLinesFound = 0;
         }
           
         // Add the character to the string (if we're reading the first or second entry)
@@ -302,17 +341,68 @@ void inline processWebRequest()
     // Check what kind of request this is
     if (strncasecmp(string, "/get?", 5) == 0)
     {
-      // Get the data
-      getData(client, string);
+      // Send the headers
+      client.println(F("HTTP/1.1 200 OK"));
+      client.println(F("Content-Type: application/octet-stream"));
+      client.println(F("Connection: close"));
+    
+      // Figure out which data is being requested
+      if (strcasecmp(string + stringLength - 7, "?memval") == 0)
+      {
+        for (unsigned short i = 0; i < sizeof(MemoryValues) * MEMORY_VALUES_COUNT; ++i)
+        {
+          client.write(EEPROM.read(i));
+        }
+      }
+      else if (strcasecmp(string + stringLength - 9, "?memsched") == 0)
+      {
+        for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT; 
+            i < sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT; ++i)
+        {
+          client.write(EEPROM.read(i));
+        }
+      }
+      else if (strcasecmp(string + stringLength - 10, "?timesched") == 0)
+      {
+        for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT + 
+            sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT;
+            i < sizeof(TimerSchedule) * TIMER_SCHEDULE_COUNT; ++i)
+        {
+          client.write(EEPROM.read(i));
+        }
+      }    
     }
     else 
     {
       // Check if we are saving data first
       if (strncasecmp(string, "/save?", 6) == 0)
       {
-        // Save the data
-        saveData(client, string);
-
+        // Figure out which data is being saved
+        if (strcasecmp(string + stringLength - 7, "?memval") == 0)
+        {
+          for (unsigned short i = 0; i < sizeof(MemoryValues) * MEMORY_VALUES_COUNT; ++i)
+          {
+            EEPROM.update(client.read(), i);
+          }
+        }
+        else if (strcasecmp(string + stringLength - 9, "?memsched") == 0)
+        {
+          for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT; 
+              i < sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT; ++i)
+          {
+            EEPROM.update(client.read(), i);
+          }
+        }
+        else if (strcasecmp(string + stringLength - 10, "?timesched") == 0)
+        {
+          for (unsigned short i = sizeof(MemoryValues) * MEMORY_VALUES_COUNT + 
+              sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT;
+              i < sizeof(TimerSchedule) * TIMER_SCHEDULE_COUNT; ++i)
+          {
+            EEPROM.update(client.read(), i);
+          }
+        }
+    
         // Change the URL to the index page
         strcpy(string, "/index.html");
       }
@@ -367,21 +457,70 @@ void inline processWebRequest()
   }
 }
 
-// Function called to get data
-void inline getData(EthernetClient client, char url[])
-{  
-}
-
-// Function called to save data
-void inline saveData(EthernetClient client, char url[])
-{
-}
-
 // Main code
 void loop()
 {
   // Process any web requests
   processWebRequest();
+
+  // Prepare various variables
+  unsigned long currentTime = now();
+  byte prevSchedule;
+  unsigned long prevScheduleStop = 0;
+  byte nextSchedule;
+  unsigned long nextScheduleStart = -1;
+  
+  // Loop through the memory schedules
+  byte i;
+  for (i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
+  {
+    // Read the schedule entry
+    MemorySchedule schedule = EEPROM.get(sizeof(MemoryValues) * MEMORY_VALUES_COUNT + 
+        sizeof(MemorySchedule) * i, schedule);
+    
+    // Check if this schedule is active
+    if (schedule.active == false)
+      continue;
+    
+    // Cacluate this schedule's start and stop times    
+    unsigned long start = previousMidnight(currentTime - (dayOfWeek(currentTime) - schedule.weekday) *
+        SECS_PER_DAY) + schedule.hour * SECS_PER_HOUR + schedule.minute * SECS_PER_MIN + schedule.second;
+    unsigned long stop = start + schedule.duration;
+
+    // Check if this schedule has already stopped and if it's the closest previous schedule
+    if (currentTime > stop && stop > prevScheduleStop)
+    {
+      prevSchedule = i;
+      prevScheduleStop = stop;
+    }
+    // Check if this schedule hasn't started yet and if it's the closest next schedule
+    else if (currentTime < start && start < nextScheduleStart)
+    {
+      nextSchedule = i;
+      nextScheduleStart = start;
+    }
+    // Check if this schedule is currently running
+    else if (currentTime > start && currentTime < stop)
+    {
+      break;
+    }
+  }
+    
+  // Check if we looped through all the schedules which means none of them are currently running
+  if (i > MEMORY_SCHEDULE_COUNT)
+  {
+    // Read the previous and next schedule values
+    MemoryValues prevValues = EEPROM.get(sizeof(MemoryValues) * EEPROM.read(sizeof(MemoryValues) * 
+        MEMORY_VALUES_COUNT + sizeof(MemorySchedule) * prevSchedule), prevValues);
+    MemoryValues nextValues = EEPROM.get(sizeof(MemoryValues) * EEPROM.read(sizeof(MemoryValues) *
+        MEMORY_VALUES_COUNT + sizeof(MemorySchedule) * nextSchedule), nextValues);
+  
+    // Calculate what the various colors should be at this point in time
+    byte calcRedValue = prevValues.red + ((float)(nextScheduleStart - currentTime) / 
+        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.red - prevValues.red)));
+    byte calcGreenValue = prevValues.green + ((float)(nextScheduleStart - currentTime) / 
+        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.green - prevValues.green)));
+  }
   
   // Process any alarms
   Alarm.delay(0);
