@@ -38,9 +38,6 @@
 #define DST_END_DAY (7 - ((1 + current.Year * 5 / 4) % 7))
 #define DST_END_HOUR 2
 #define URL_MAX_LENGTH 50
-#define MEMORY_VALUES_COUNT 5
-#define MEMORY_SCHEDULE_COUNT 10
-#define TIMER_SCHEDULE_COUNT 10
 
 // Define IR codes for Ecoxotic E-Series fixtures
 #define SET_CLOCK_CODE 0x20DF3AC5
@@ -66,7 +63,7 @@
 #define M1_CODE 0x20DF18E7
 #define M2_CODE 0x20DF9867
 #define DAYLIGHT_CODE 0x20DF58A7
-#define MOON_CODE 0x20DFD827
+#define MOONLIGHT_CODE 0x20DFD827
 #define DYNAMIC_MOON_CODE 0x20DF28D7
 #define DYNAMIC_LIGHTNING_CODE 0x20DFA857
 #define DYNAMIC_CLOUD_CODE 0x20DF6897
@@ -75,6 +72,9 @@
 // Define IR codes for Current USA Satelite Plus & Plus Pro fixtures
 
 // Define EEPROM locations
+#define MEMORY_VALUES_COUNT 5
+#define MEMORY_SCHEDULE_COUNT 10
+#define TIMER_SCHEDULE_COUNT 10
 #define MEMORY_VALUES_LOCATION_BEGIN 0
 #define MEMORY_VALUES_LOCATION_END (MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) * MEMORY_VALUES_COUNT)
 #define MEMORY_SCHEDULE_LOCATION_BEGIN MEMORY_VALUES_LOCATION_END
@@ -85,7 +85,6 @@
 // Define Structures
 struct MemoryValues
 {  
-  byte button;
   byte red;
   byte green;
   byte blue;
@@ -93,28 +92,24 @@ struct MemoryValues
 };
 struct MemorySchedule
 {
-  byte number;
-  bool active;
-  byte weekday;
-  byte hour;
-  byte minute;
-  byte second;
-  unsigned long duration;
+  byte button : 5;
+  bool active : 1;
+  byte weekday : 3;
+  unsigned long timeSinceMidnight : 17;
+  unsigned long duration : 17;
 };
 struct TimerSchedule
 {
-  byte button;
-  bool active;
-  byte weekday;
-  byte hour;
-  byte minute;
-  byte second;
+  byte button : 5;
+  bool active : 1;
+  byte weekday : 3;
+  unsigned long timeSinceMidnight : 17;
 };
 struct ColorValues
 {
   byte red;
   byte green;
-  byte glue;
+  byte blue;
   byte white;
 };
 
@@ -379,6 +374,7 @@ void inline processWebRequest()
     else if (strcasecmp(string, "/restart") == 0)
     {
       // Do a soft restart
+      DEBUG_LOG_LN(F("Restarting ..."));
       asm volatile("jmp 0");
     }
     else 
@@ -488,16 +484,26 @@ void loop()
     if (schedule.active == false)
       continue;
     
-    // Cacluate this schedule's start and stop times    
+    // Cacluate this schedule's start and stop times
     unsigned long start = previousMidnight(currentTime - (dayOfWeek(currentTime) - schedule.weekday) *
-        SECS_PER_DAY) + schedule.hour * SECS_PER_HOUR + schedule.minute * SECS_PER_MIN + schedule.second;
+        SECS_PER_DAY) + schedule.timeSinceMidnight;
     unsigned long stop = start + schedule.duration;
 
+    // Check if this schedule is currently running
+    if (currentTime > start && currentTime < stop)
+    {
+      break;
+    }
     // Check if this schedule has already stopped and if it's the closest previous schedule
-    if (currentTime > stop && stop > prevScheduleStop)
+    else if (currentTime > stop && stop > prevScheduleStop)
     {
       prevSchedule = i;
       prevScheduleStop = stop;
+    }
+    else if (currentTime > stop - SECS_PER_WEEK && stop - SECS_PER_WEEK > prevScheduleStop)
+    {
+      prevSchedule = 1;
+      prevScheduleStop = stop - SECS_PER_WEEK;
     }
     // Check if this schedule hasn't started yet and if it's the closest next schedule
     else if (currentTime < start && start < nextScheduleStart)
@@ -505,11 +511,11 @@ void loop()
       nextSchedule = i;
       nextScheduleStart = start;
     }
-    // Check if this schedule is currently running
-    else if (currentTime > start && currentTime < stop)
+    else if (currentTime < start + SECS_PER_WEEK && start + SECS_PER_WEEK < nextScheduleStart)
     {
-      break;
-    }
+      nextSchedule = i;
+      nextScheduleStart = start + SECS_PER_WEEK;
+    }   
   }
     
   // Check if we looped through all the schedules which means none of them are currently running
@@ -520,11 +526,78 @@ void loop()
         EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), prevValues);
     MemoryValues nextValues = EEPROM.get(MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) * 
         EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule), nextValues);
-  
+
     // Calculate what the various colors should be at this point in time
-    byte calcRedValue = prevValues.red + ((float)(nextScheduleStart - currentTime) / 
-        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.red - prevValues.red)));
-    byte calcGreenValue = prevValues.green + ((float)(nextScheduleStart - currentTime) / 
-        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.green - prevValues.green)));
+    byte calcRedValue = prevValues.red + ((float)(currentTime - prevScheduleStop) / 
+        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.red - prevValues.red)) + 
+        0.5F);
+    byte calcGreenValue = prevValues.green + ((float)(currentTime - prevScheduleStop) / 
+        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.green - prevValues.green)) + 
+        0.5F);
+    byte calcBlueValue = prevValues.blue + ((float)(currentTime - prevScheduleStop) /
+        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.blue - prevValues.blue)) + 
+        0.5F);
+    byte calcWhiteValue = prevValues.white + ((float)(currentTime - prevScheduleStop) /
+        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.white - prevValues.white)) +
+        0.5F);
+
+    // Check if we have to adjust the colors
+    IRsend irSend;
+    if (calcRedValue < gCurrentColorValues.red)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(RED_UP_CODE, 32);
+      delay(333);
+      ++gCurrentColorValues.red;
+    }
+    else if (calcRedValue > gCurrentColorValues.red)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(RED_DOWN_CODE, 32);
+      delay(333);
+      --gCurrentColorValues.red;
+    }
+    if (calcGreenValue < gCurrentColorValues.green)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(GREEN_UP_CODE, 32);
+      delay(333);
+      ++gCurrentColorValues.green;
+    }
+    else if (calcGreenValue > gCurrentColorValues.green)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(GREEN_DOWN_CODE, 32);
+      delay(333);
+      --gCurrentColorValues.green;
+    }    
+    if (calcBlueValue < gCurrentColorValues.blue)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(BLUE_UP_CODE, 32);
+      delay(333);
+      ++gCurrentColorValues.blue;
+    }
+    else if (calcBlueValue > gCurrentColorValues.blue)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(BLUE_DOWN_CODE, 32);
+      delay(333);
+      --gCurrentColorValues.blue;
+    }    
+    if (calcWhiteValue < gCurrentColorValues.white)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(WHITE_UP_CODE, 32);
+      delay(333);
+      ++gCurrentColorValues.white;
+    }
+    else if (calcWhiteValue > gCurrentColorValues.white)
+    {
+      // Send the IR code, wait, and adjust the current color value
+      irSend.sendNEC(WHITE_DOWN_CODE, 32);
+      delay(333);
+      --gCurrentColorValues.white;
+    }    
   }
 }
