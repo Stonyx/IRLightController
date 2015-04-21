@@ -72,19 +72,19 @@
 // Define IR codes for Current USA Satelite Plus & Plus Pro fixtures
 
 // Define EEPROM locations
-#define MEMORY_VALUES_COUNT 5
-#define MEMORY_SCHEDULE_COUNT 10
-#define TIMER_SCHEDULE_COUNT 10
-#define MEMORY_VALUES_LOCATION_BEGIN 0
-#define MEMORY_VALUES_LOCATION_END (MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) * MEMORY_VALUES_COUNT)
-#define MEMORY_SCHEDULE_LOCATION_BEGIN MEMORY_VALUES_LOCATION_END
+#define COLOR_VALUES_COUNT 5 // Power, Red, Green, Blue, and White
+#define MEMORY_SCHEDULE_COUNT 80 // Must be multiples of 8
+#define TIMER_SCHEDULE_COUNT 80 // Must be multiples of 8
+#define COLOR_VALUES_LOCATION_BEGIN 0
+#define COLOR_VALUES_LOCATION_END (COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * COLOR_VALUES_COUNT)
+#define MEMORY_SCHEDULE_LOCATION_BEGIN COLOR_VALUES_LOCATION_END
 #define MEMORY_SCHEDULE_LOCATION_END (MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT)
 #define TIMER_SCHEDULE_LOCATION_BEGIN MEMORY_SCHEDULE_LOCATION_END
 #define TIMER_SCHEDULE_LOCATION_END (TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * TIMER_SCHEDULE_COUNT)
 
 // Define Structures
-struct MemoryValues
-{  
+struct ColorValues
+{
   byte red;
   byte green;
   byte blue;
@@ -93,29 +93,33 @@ struct MemoryValues
 struct MemorySchedule
 {
   byte button : 5;
-  bool active : 1;
-  byte weekday : 3;
+  byte weekday : 4; // 0 for never, 1-7 for Sunday to Saturday, 8 for Monday through Friday, 9 for Saturday and Sunday
   unsigned long timeSinceMidnight : 17;
   unsigned long duration : 17;
 };
 struct TimerSchedule
 {
   byte button : 5;
-  bool active : 1;
-  byte weekday : 3;
+  byte weekday : 4; // 0 for never, 1-7 for Sunday to Saturday, 8 for Monday through Friday, 9 for Saturday and Sunday
   unsigned long timeSinceMidnight : 17;
 };
-struct ColorValues
+struct ScheduleCounter
 {
-  byte red;
-  byte green;
-  byte blue;
-  byte white;
+  byte one : 3;
+  byte two : 3;
+  byte three : 3;
+  byte four : 3;
+  byte five : 3;
+  byte six : 3;
+  byte seven : 3;
+  byte eight : 3;
 };
 
 // Define global variables
 static EthernetServer gServer(80);
-ColorValues gCurrentColorValues;
+static ColorValues gCurrentColorValues;
+static ScheduleCounter gMemoryScheduleCounters[MEMORY_SCHEDULE_COUNT / 8];
+static ScheduleCounter gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 8];
 
 // Setup code
 void setup()
@@ -341,7 +345,7 @@ void inline processWebRequest()
     DEBUG_LOG_LN(string);
   
     // Check what kind of request this is
-    if (strncasecmp(string, "/get?", 5) == 0)
+    if (strncasecmp(string, "/get?", 5) == 0 && stringLength > 10)
     {
       // Send the headers
       client.println(F("HTTP/1.1 200 OK"));
@@ -349,21 +353,21 @@ void inline processWebRequest()
       client.println(F("Connection: close"));
     
       // Figure out which data is being requested
-      if (strcasecmp(string + stringLength - 7, "?memval") == 0)
+      if (strcasecmp((char*)string[stringLength - 7], "?memval") == 0)
       {
-        for (unsigned short i = MEMORY_VALUES_LOCATION_BEGIN; i < MEMORY_VALUES_LOCATION_END; ++i)
+        for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
         }
       }
-      else if (strcasecmp(string + stringLength - 9, "?memsched") == 0)
+      else if (strcasecmp((char*)string[stringLength - 9], "?memsched") == 0)
       {
         for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
         }
       }
-      else if (strcasecmp(string + stringLength - 10, "?timesched") == 0)
+      else if (strcasecmp((char*)string[stringLength - 10], "?timesched") == 0)
       {
         for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
         {
@@ -380,24 +384,24 @@ void inline processWebRequest()
     else 
     {
       // Check if we are saving data first
-      if (strncasecmp(string, "/save?", 6) == 0)
+      if (strncasecmp(string, "/save?", 6) == 0 && stringLength > 10)
       {
         // Figure out which data is being saved
-        if (strcasecmp(string + stringLength - 7, "?memval") == 0)
+        if (strcasecmp((char*)string[stringLength - 7], "?memval") == 0)
         {
-          for (unsigned short i = MEMORY_VALUES_LOCATION_BEGIN; i < MEMORY_VALUES_LOCATION_END; ++i)
+          for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
           {
             EEPROM.update(client.read(), i);
           }
         }
-        else if (strcasecmp(string + stringLength - 9, "?memsched") == 0)
+        else if (strcasecmp((char*)string[stringLength - 9], "?memsched") == 0)
         {
           for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
           {
             EEPROM.update(client.read(), i);
           }
         }
-        else if (strcasecmp(string + stringLength - 10, "?timesched") == 0)
+        else if (strcasecmp((char*)string[stringLength - 10], "?timesched") == 0)
         {
           for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
           {
@@ -427,19 +431,28 @@ void inline processWebRequest()
       
       // Figure out the content type
       const __FlashStringHelper* type;
-      if (strcasecmp(string + stringLength - 5, ".html") == 0)
-        type = F("text/html");
-      else if (strcasecmp(string + stringLength - 4, ".css") == 0)
-        type = F("text/css");
-      else if (strcasecmp(string + stringLength - 3, ".js") == 0)
-        type = F("text/javascript");
-      else if (strcasecmp(string + stringLength - 5, ".jpeg") == 0)
-        type = F("image/jpeg");
-      else if (strcasecmp(string + stringLength - 4, ".jpg") == 0)
-        type = F("image/jpeg");
-      else if (strcasecmp(string + stringLength - 4, ".png") == 0)
-        type = F("image/png");
-      
+      if (stringLength > 3)
+      {
+        if (strcasecmp((char*)string[stringLength - 3], ".js") == 0)
+          type = F("text/javascript");
+      }
+      if (stringLength > 4)
+      {
+        if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
+          type = F("text/css");
+        else if (stringLength > 4 && strcasecmp((char*)string[stringLength - 4], ".jpg") == 0)
+          type = F("image/jpeg");
+        else if (stringLength > 4 && strcasecmp((char*)string[stringLength - 4], ".png") == 0)
+          type = F("image/png");      
+      }
+      if (stringLength > 5)
+      {
+        if (strcasecmp((char*)string[stringLength - 5], ".html") == 0)
+          type = F("text/html");
+        else if (strcasecmp((char*)string[stringLength - 5], ".jpeg") == 0)
+          type = F("image/jpeg");
+      }
+
       // Send the file
       client.println(F("HTTP/1.1 200 OK"));
       client.print(F("Content-Type: "));
@@ -481,9 +494,16 @@ void loop()
         schedule);
     
     // Check if this schedule is active
-    if (schedule.active == false)
+    if (schedule.weekday == 0)
       continue;
     
+    // Adjust the weekday
+    byte day = dayOfWeek(currentTime);
+    if (schedule.weekday == 8 && day > 1 && day < 7)
+      schedule.weekday = day;
+    else if (schedule.weekday == 9 && (day == 1 || day == 7))
+      schedule.weekday = day;
+
     // Cacluate this schedule's start and stop times
     unsigned long start = previousMidnight(currentTime - (dayOfWeek(currentTime) - schedule.weekday) *
         SECS_PER_DAY) + schedule.timeSinceMidnight;
@@ -522,82 +542,101 @@ void loop()
   if (i > MEMORY_SCHEDULE_COUNT)
   {
     // Read the previous and next schedule values
-    MemoryValues prevValues = EEPROM.get(MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) *
+    ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
         EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), prevValues);
-    MemoryValues nextValues = EEPROM.get(MEMORY_VALUES_LOCATION_BEGIN + sizeof(MemoryValues) * 
+    ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
         EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule), nextValues);
 
-    // Calculate what the various colors should be at this point in time
-    byte calcRedValue = prevValues.red + ((float)(currentTime - prevScheduleStop) / 
-        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.red - prevValues.red)) + 
-        0.5F);
-    byte calcGreenValue = prevValues.green + ((float)(currentTime - prevScheduleStop) / 
-        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.green - prevValues.green)) + 
-        0.5F);
-    byte calcBlueValue = prevValues.blue + ((float)(currentTime - prevScheduleStop) /
-        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.blue - prevValues.blue)) + 
-        0.5F);
-    byte calcWhiteValue = prevValues.white + ((float)(currentTime - prevScheduleStop) /
-        ((float)(nextScheduleStart - prevScheduleStop) / (float)(nextValues.white - prevValues.white)) +
-        0.5F);
+    // Prepare the IR code array
+    FLASH_ARRAY(unsigned long, irCodes, RED_UP_CODE, RED_DOWN_CODE, GREEN_UP_CODE, GREEN_DOWN_CODE, BLUE_UP_CODE,
+        BLUE_DOWN_CODE, WHITE_UP_CODE, WHITE_DOWN_CODE);
 
-    // Check if we have to adjust the colors
-    IRsend irSend;
-    if (calcRedValue < gCurrentColorValues.red)
+    // Loop through the colors
+    for (byte i = 0; i < 4; ++i)
     {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(RED_UP_CODE, 32);
-      delay(333);
-      ++gCurrentColorValues.red;
+      // Calculate what the color should be at this point in time
+      // Math: previous color value + seconds since previous schedule ended /
+      //       (seconds between schedules / difference in color between schedules) +
+      //       0.5 for rounding
+      byte calcValue = (byte)((float)((byte*)&prevValues)[i] + (float)(currentTime - prevScheduleStop) /
+          ((float)(nextScheduleStart - prevScheduleStop) / (float)(((byte*)&nextValues)[i] - ((byte*)&prevValues)[i])) +
+          (float)0.5);
+
+      // Check if we have to adjust the colors
+      if (calcValue < ((byte*)&gCurrentColorValues)[i])
+      {
+        // Send the IR code, wait, and adjust the current color value
+        IRsend irSend;
+        irSend.sendNEC(irCodes[i * 2], 32);
+        delay(333);
+        ++((byte*)&gCurrentColorValues)[i];
+      }
+      else if (calcValue > ((byte*)&gCurrentColorValues)[i])
+      {
+        // Send the IR code, wait, and adjust the current color value
+        IRsend irSend;
+        irSend.sendNEC(irCodes[i * 2 + 1], 32);
+        delay(333);
+        --((byte*)&gCurrentColorValues)[i];
+      }
     }
-    else if (calcRedValue > gCurrentColorValues.red)
+  }
+  else
+  {
+    // Loop through the memory schedules
+    for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
     {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(RED_DOWN_CODE, 32);
-      delay(333);
-      --gCurrentColorValues.red;
+      // Load the schedule
+      MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+        schedule);
+
+      // Check if this schedule is active
+      if (schedule.weekday == 0)
+        continue;
+    
+      // Load the counter for this shedule
+      byte counter = ((byte*)&gMemoryScheduleCounters[i / 8])[i % 8];
+
+      // Check if this schedule should run today
+      byte day = dayOfWeek(currentTime);
+      if ((schedule.weekday == day && counter < 1) || 
+          (schedule.weekday == 8 && day > 1 && day < 7 && counter < day - 1) || 
+          (schedule.weekday == 9 && ((day == 1 && counter < 1) || (day == 7 && counter < 2))))
+      {
+        // Check if it's time to run this schedule
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        {
+
+        }
+      }
     }
-    if (calcGreenValue < gCurrentColorValues.green)
+
+    // Loop through the timer schedules
+    for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
     {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(GREEN_UP_CODE, 32);
-      delay(333);
-      ++gCurrentColorValues.green;
+      // Load the schedule
+      TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
+        schedule);
+
+      // Check if this schedule is active
+      if (schedule.weekday == 0)
+        continue;
+    
+      // Load the counter for this shedule
+      byte counter = ((byte*)&gTimerScheduleCounters[i / 8])[i % 8];
+
+      // Check if this schedule should run today
+      byte day = dayOfWeek(currentTime);
+      if ((schedule.weekday == day && counter < 1) || 
+          (schedule.weekday == 8 && day > 1 && day < 7 && counter < day - 1) || 
+          (schedule.weekday == 9 && ((day == 1 && counter < 1) || (day == 7 && counter < 2))))
+      {
+        // Check if it's time to run this schedule
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        {
+
+        }
+      }
     }
-    else if (calcGreenValue > gCurrentColorValues.green)
-    {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(GREEN_DOWN_CODE, 32);
-      delay(333);
-      --gCurrentColorValues.green;
-    }    
-    if (calcBlueValue < gCurrentColorValues.blue)
-    {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(BLUE_UP_CODE, 32);
-      delay(333);
-      ++gCurrentColorValues.blue;
-    }
-    else if (calcBlueValue > gCurrentColorValues.blue)
-    {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(BLUE_DOWN_CODE, 32);
-      delay(333);
-      --gCurrentColorValues.blue;
-    }    
-    if (calcWhiteValue < gCurrentColorValues.white)
-    {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(WHITE_UP_CODE, 32);
-      delay(333);
-      ++gCurrentColorValues.white;
-    }
-    else if (calcWhiteValue > gCurrentColorValues.white)
-    {
-      // Send the IR code, wait, and adjust the current color value
-      irSend.sendNEC(WHITE_DOWN_CODE, 32);
-      delay(333);
-      --gCurrentColorValues.white;
-    }    
   }
 }
