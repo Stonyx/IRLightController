@@ -629,7 +629,7 @@ void loop()
       continue;
   
     // Load the counter for this shedule
-    byte counter = ((*(byte *)&gMemoryScheduleCounters[i / 2]) << ((i % 2) * 4)) & 0xF0;
+    byte counter = (*(byte *)&gMemoryScheduleCounters[i / 2] >> (i % 2) * 4) & 0x0F;
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
@@ -646,8 +646,8 @@ void loop()
         delay(333);
      
         // Increment the counter
-        byte newValue = ((*(byte *)&gMemoryScheduleCounters[i / 2]) & ((~0x07) << ((i % 2) * 4))) |
-            (++counter | ((i % 2) * 4));
+        byte newValue = (*(byte *)&gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+            (++counter << (i % 2) * 4);
         gMemoryScheduleCounters[i / 2] = *(MemoryScheduleCounter *)&newValue;
       }
     }
@@ -664,9 +664,9 @@ void loop()
         delay(333);
         
         // Increment the counter
-        byte newValue = ((*(byte *)&gMemoryScheduleCounters[i / 2]) & ((~0x07) << ((i % 2) * 4))) |
-            (++counter | ((i % 2) * 4));
-        gMemoryScheduleCounters[i / 2] = *(MemoryScheduleCounter *)&newValue;
+       byte newValue = (*(byte *)&gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+           (++counter << (i % 2) * 4);
+       gMemoryScheduleCounters[i / 2] = *(MemoryScheduleCounter *)&newValue;
       }
     }
   }
@@ -691,7 +691,7 @@ void loop()
       continue;
   
     // Load the counter for this shedule
-    byte counter = ((*(unsigned short int *)&gTimerScheduleCounters[i / 5]) << ((i % 5) * 3)) & 0xE000;
+    byte counter = (*(unsigned short int *)&gTimerScheduleCounters[i / 5] >> (i % 5) * 3) & 0x0007;
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
@@ -708,8 +708,8 @@ void loop()
         delay(333);
         
         // Increment the counter   
-        unsigned short int newValue = ((*(unsigned short int *)&gTimerScheduleCounters[i / 5]) & ((~0xF000) << ((i % 5) * 3))) |
-            (++counter | ((i % 5) * 3));
+        unsigned short int newValue = (*(unsigned short int *)&gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
+            (++counter << (i % 5) * 3);
         gTimerScheduleCounters[i / 5] = *(TimerScheduleCounter *)&newValue;
       }
     }  
