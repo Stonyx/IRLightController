@@ -629,7 +629,7 @@ void loop()
       continue;
   
     // Load the counter for this shedule
-    byte counter = (*((byte *)&gMemoryScheduleCounters[i / 2]) << (i * 4)) & 0xF000;
+    byte counter = ((*(byte *)&gMemoryScheduleCounters[i / 2]) << ((i % 2) * 4)) & 0xF0;
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
@@ -644,9 +644,11 @@ void loop()
         IRsend irSend;
         irSend.sendNEC(memoryIRCodes[schedule.button], 32);
         delay(333);
-        
+     
         // Increment the counter
-        ++counter; // TODO: fix this
+        byte newValue = ((*(byte *)&gMemoryScheduleCounters[i / 2]) & ((~0x07) << ((i % 2) * 4))) |
+            (++counter | ((i % 2) * 4));
+        gMemoryScheduleCounters[i / 2] = *(MemoryScheduleCounter *)&newValue;
       }
     }
     else if ((schedule.weekday == day && counter < 2) || (schedule.weekday == 8 && counter < day * 2) ||
@@ -662,7 +664,9 @@ void loop()
         delay(333);
         
         // Increment the counter
-        ++counter; // TODO: fix this
+        byte newValue = ((*(byte *)&gMemoryScheduleCounters[i / 2]) & ((~0x07) << ((i % 2) * 4))) |
+            (++counter | ((i % 2) * 4));
+        gMemoryScheduleCounters[i / 2] = *(MemoryScheduleCounter *)&newValue;
       }
     }
   }
@@ -687,7 +691,7 @@ void loop()
       continue;
   
     // Load the counter for this shedule
-    byte counter = (*((unsigned short int *)&gTimerScheduleCounters[i / 5]) << (i * 3)) & 0xE000;
+    byte counter = ((*(unsigned short int *)&gTimerScheduleCounters[i / 5]) << ((i % 5) * 3)) & 0xE000;
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
@@ -703,8 +707,10 @@ void loop()
         irSend.sendNEC(timerIRCodes[schedule.button], 32);
         delay(333);
         
-        // Increment the counter
-        ++counter; // TODO: fix this
+        // Increment the counter   
+        unsigned short int newValue = ((*(unsigned short int *)&gTimerScheduleCounters[i / 5]) & ((~0xF000) << ((i % 5) * 3))) |
+            (++counter | ((i % 5) * 3));
+        gTimerScheduleCounters[i / 5] = *(TimerScheduleCounter *)&newValue;
       }
     }  
   }
