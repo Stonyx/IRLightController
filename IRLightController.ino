@@ -1,5 +1,5 @@
 // Debug related definitions
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
   #define DEBUG_BEGIN() Serial.begin(9600)
   #define DEBUG_LOG(string) Serial.print(string)
@@ -105,25 +105,12 @@ struct TimerSchedule
                     //   9 for Monday through Friday, 10 for Saturday and Sunday
   unsigned long timeSinceMidnight : 17;
 };
-struct MemoryScheduleCounter
-{
-  byte one : 4;
-  byte two : 4;
-};
-struct TimerScheduleCounter
-{
-  byte one : 3;
-  byte two : 3;
-  byte three : 3;
-  byte four : 3;
-  byte five : 3;
-};
 
 // Define global variables
 static EthernetServer gServer(80);
 static ColorValues gCurrentColorValues;
-static MemoryScheduleCounter gMemoryScheduleCounters[MEMORY_SCHEDULE_COUNT / 2];
-static TimerScheduleCounter gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 5];
+static byte gMemoryScheduleCounters[MEMORY_SCHEDULE_COUNT / 2];
+static unsigned short int gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 5];
 static unsigned long gClearScheduleCountersTime;
 
 // Setup code
@@ -163,6 +150,10 @@ void setup()
 
   // Set the time for clearing the schedule counters
   gClearScheduleCountersTime = nextSunday(now());
+
+  // Prepare needed variables
+  unsigned long currentTime = now();
+  byte day = dayOfWeek(currentTime);
   
   // Loop through the memory schedules
   for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
@@ -170,6 +161,17 @@ void setup()
     // Load the schedule
     MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
       schedule);
+
+    // Check if this schedule is active
+    if (schedule.weekday == 0)
+      continue;
+
+    // Calculate how many times this schedule should have run already this week
+    byte count = 0;
+
+    // Adjust the counter
+    gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+        (count << (i % 2) * 4);
   }
   
   // Loop through the timer schedules
@@ -178,6 +180,44 @@ void setup()
     // Load the schedule
     TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
       schedule);
+
+      // Check if this schedule is active
+    if (schedule.weekday == 0)
+      continue;
+
+    // Calculate how many times this schedule should have run already this week
+    byte count = 0;
+    if (schedule.weekday >= 0 && schedule.weekday <= 7 && (schedule.weekday < day || 
+        (schedule.weekday == day && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)))
+    {
+      count = 1;
+    }
+    else if (schedule.weekday == 8)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = day;
+      else
+        count = day - 1;
+    }
+    else if (schedule.weekday == 9)
+    {
+      if (day > 1 && day < 7 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = day - 1;
+      else 
+        count = day - 2;
+    }
+    else if (schedule.weekday == 10)
+    {
+      if ((day == 1 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight) || 
+          (day > 1 && day < 7))
+        count = 1;
+      else if (day == 7 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 2;
+    }
+
+    // Adjust the counter
+    gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
+        (count << (i % 5) * 3);
   }  
 
   // Log free memory
@@ -606,8 +646,8 @@ void loop()
   if (currentTime > gClearScheduleCountersTime)
   {
     // Clear the counters
-    memset(&gMemoryScheduleCounters, 0, sizeof(MemoryScheduleCounter) * MEMORY_SCHEDULE_COUNT / 2);
-    memset(&gTimerScheduleCounters, 0, sizeof(TimerScheduleCounter) * TIMER_SCHEDULE_COUNT / 5);
+    memset(&gMemoryScheduleCounters, 0, sizeof(byte) * MEMORY_SCHEDULE_COUNT / 2);
+    memset(&gTimerScheduleCounters, 0, sizeof(unsigned short int) * TIMER_SCHEDULE_COUNT / 5);
     
     // Set the new time for clearing the counters
     gClearScheduleCountersTime = nextSunday(currentTime);
@@ -629,7 +669,7 @@ void loop()
       continue;
   
     // Load the counter for this shedule
-    byte counter = (*(byte *)&gMemoryScheduleCounters[i / 2] >> (i % 2) * 4) & 0x0F;
+    byte counter = (gMemoryScheduleCounters[i / 2] >> (i % 2) * 4) & 0x0F;
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
@@ -646,9 +686,8 @@ void loop()
         delay(333);
      
         // Increment the counter
-        byte newValue = (*(byte *)&gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+        gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
             (++counter << (i % 2) * 4);
-        gMemoryScheduleCounters[i / 2] = *(MemoryScheduleCounter *)&newValue;
       }
     }
     else if ((schedule.weekday == day && counter < 2) || (schedule.weekday == 8 && counter < day * 2) ||
@@ -664,9 +703,8 @@ void loop()
         delay(333);
         
         // Increment the counter
-       byte newValue = (*(byte *)&gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+       gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
            (++counter << (i % 2) * 4);
-       gMemoryScheduleCounters[i / 2] = *(MemoryScheduleCounter *)&newValue;
       }
     }
   }
@@ -691,7 +729,7 @@ void loop()
       continue;
   
     // Load the counter for this shedule
-    byte counter = (*(unsigned short int *)&gTimerScheduleCounters[i / 5] >> (i % 5) * 3) & 0x0007;
+    byte counter = (gTimerScheduleCounters[i / 5] >> (i % 5) * 3) & 0x0007;
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
@@ -708,9 +746,8 @@ void loop()
         delay(333);
         
         // Increment the counter   
-        unsigned short int newValue = (*(unsigned short int *)&gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
+        gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
             (++counter << (i % 5) * 3);
-        gTimerScheduleCounters[i / 5] = *(TimerScheduleCounter *)&newValue;
       }
     }  
   }
