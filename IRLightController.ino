@@ -1,11 +1,11 @@
 // Debug related definitions
 // #define DEBUG
 #ifdef DEBUG
-  #define DEBUG_BEGIN() Serial.begin(9600)
+  #define DEBUG_SERIAL_BEGIN() Serial.begin(9600)
   #define DEBUG_LOG(string) Serial.print(string)
   #define DEBUG_LOG_LN(string) Serial.println(string)
 #else
-  #define DEBUG_BEGIN()
+  #define DEBUG_SERIAL_BEGIN()
   #define DEBUG_LOG(string)
   #define DEBUG_LOG_LN(string)
 #endif
@@ -71,6 +71,19 @@
 
 // Define IR codes for Current USA Satelite Plus & Plus Pro fixtures
 
+// Define schedule weekdays
+#define NEVER 0
+#define SUNDAY 1
+#define MONDAY 2
+#define TUESDAY 3
+#define WEDNESDAY 4
+#define THURSDAY 5
+#define FRIDAY 6
+#define SATURDAY 7
+#define EVERYDAY 8
+#define MON_TO_FRI 9
+#define SUN_AND_SAT 10
+
 // Define EEPROM locations
 #define COLOR_VALUES_COUNT 5 // Power, Red, Green, Blue, and White
 #define MEMORY_SCHEDULE_COUNT 50 // Must be multiples of 2
@@ -93,16 +106,14 @@ struct ColorValues
 struct MemorySchedule
 {
   byte button : 5;
-  byte weekday : 4; // 0 for never, 1-7 for Sunday-Saturday, 8 for Sunday through Saturday, 
-                    //   9 for Monday through Friday, 10 for Saturday and Sunday
+  byte weekday : 4;
   unsigned long timeSinceMidnight : 17;
   unsigned long duration : 17;
 };
 struct TimerSchedule
 {
   byte button : 5;
-  byte weekday : 4; // 0 for never, 1-7 for Sunday-Saturday, 8 for Sunday through Saturday, 
-                    //   9 for Monday through Friday, 10 for Saturday and Sunday
+  byte weekday : 4;
   unsigned long timeSinceMidnight : 17;
 };
 
@@ -117,7 +128,7 @@ static unsigned long gClearScheduleCountersTime;
 void setup()
 {
   // Initialize the serial communication for debugging
-  DEBUG_BEGIN();
+  DEBUG_SERIAL_BEGIN();
   DEBUG_LOG_LN(F("Starting IR Light Controller sketch ..."));
   DEBUG_LOG_FREE_RAM();
   
@@ -135,8 +146,12 @@ void setup()
   // Start the ethernet  
   DEBUG_LOG_LN(F("Starting ethernet ..."));
   uint8_t mac[] = { 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90 };
+  #ifdef DEBUG
+  Ethernet.begin(mac, IPAddress(192, 168, 0, 254));
+  #else
   if (!Ethernet.begin(mac))
     DEBUG_LOG_LN(F("Failed to start ethernet"));
+  #endif
 
   // Start the server
   DEBUG_LOG_LN(F("Starting server ..."));
@@ -258,11 +273,71 @@ void setupScheduleCounters()
       schedule);
 
     // Check if this schedule is active
-    if (schedule.weekday == 0)
+    if (schedule.weekday == NEVER)
       continue;
 
     // Calculate how many times this schedule should have run already this week
     byte count = 0;
+    if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
+    {
+      if (day > schedule.weekday)
+      {
+        count = 2;
+      }
+      else if (day == schedule.weekday)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+          count = 2;
+        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = 1;
+      }
+    }
+    else if (schedule.weekday == EVERYDAY)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+        count = day * 2;
+      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = day * 2 - 1;
+      else 
+        count = (day - 1) * 2;
+    }
+    else if (schedule.weekday == MON_TO_FRI)
+    {
+      if (day >= MONDAY && day <= FRIDAY)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+          count = (day - 1) * 2;
+        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = (day - 1) * 2 - 1;
+        else 
+          count = (day - 2) * 2;
+      }
+      else if (day == SATURDAY)
+      {
+        count = 10;
+      }
+    }
+    else if (schedule.weekday == SUN_AND_SAT)
+    {
+      if (day == SUNDAY)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
+          count = 2;
+        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = 1;
+      }
+      else if (day < SATURDAY)
+      {
+        count = 2;
+      }
+      else if (day == SATURDAY)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
+          count = 4;
+        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = 3;
+      }
+    }
 
     // Adjust the counter
     gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
@@ -277,44 +352,52 @@ void setupScheduleCounters()
       schedule);
 
       // Check if this schedule is active
-    if (schedule.weekday == 0)
+    if (schedule.weekday == NEVER)
       continue;
 
     // Calculate how many times this schedule should have run already this week
     byte count = 0;
-    if (schedule.weekday < 8)
+    if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
     {
       if (day > schedule.weekday || (day == schedule.weekday && 
           currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight))
         count = 1;
     }
-    else if (schedule.weekday == 8)
+    else if (schedule.weekday == EVERYDAY)
     {
       if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
         count = day;
       else
         count = day - 1;
     }
-    else if (schedule.weekday == 9)
+    else if (schedule.weekday == MON_TO_FRI)
     {
-      if (day > 1 && day < 7)
+      if (day >= MONDAY && day <= FRIDAY)
       {
         if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
           count = day - 1;
         else 
           count = day - 2;
       }
-      else if (day == 7)
+      else if (day == SATURDAY)
       {
         count = 5;
       }
     }
-    else if (schedule.weekday == 10)
+    else if (schedule.weekday == SUN_AND_SAT)
     {
-      if ((day == 1 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight) || day < 7)
+      if ((day == SUNDAY && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight) ||
+          (day > SUNDAY && day < SATURDAY))
+      {
         count = 1;
-      else if (day == 7 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-        count = 2;
+      }
+      else if (day == SATURDAY)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = 2;
+        else 
+          count = 1;
+      }
     }
 
     // Adjust the counter
@@ -566,14 +649,13 @@ void loop()
         schedule);
     
     // Check if this schedule is active
-    if (schedule.weekday == 0)
+    if (schedule.weekday == NEVER)
       continue;
     
-    // Adjust the weekday
+    // Adjust the schedule's weekday
     byte day = dayOfWeek(currentTime);
-    if (schedule.weekday == 8 && day > 1 && day < 7)
-      schedule.weekday = day;
-    else if (schedule.weekday == 9 && (day == 1 || day == 7))
+    if (schedule.weekday == EVERYDAY || (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY) ||
+        (schedule.weekday == SUN_AND_SAT && (day == SUNDAY || day == SATURDAY)))
       schedule.weekday = day;
 
     // Cacluate this schedule's start and stop times
@@ -685,9 +767,9 @@ void loop()
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
-    if ((schedule.weekday == day && counter < 1) || (schedule.weekday == 8 && counter < day) ||
-        (schedule.weekday == 9 && day > 1 && day < 7 && counter < day - 1) || 
-        (schedule.weekday == 10 && ((day == 1 && counter < 1) || (day == 7 && counter < 2))))
+    if ((schedule.weekday == day && counter < 1) || (schedule.weekday == EVERYDAY && counter < day) ||
+        (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY && counter < day - 1) || 
+        (schedule.weekday == SUN_AND_SAT && ((day == SUNDAY && counter < 1) || (day == SATURDAY && counter < 2))))
     {
       // Check if it's time to run this schedule
       if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
@@ -702,9 +784,9 @@ void loop()
             (++counter << (i % 2) * 4);
       }
     }
-    else if ((schedule.weekday == day && counter < 2) || (schedule.weekday == 8 && counter < day * 2) ||
-        (schedule.weekday == 9 && day > 1 && day < 7 && counter < (day - 1) * 2) || 
-        (schedule.weekday == 10 && ((day == 1 && counter < 2) || (day == 7 && counter < 4)))) 
+    else if ((schedule.weekday == day && counter < 2) || (schedule.weekday == EVERYDAY && counter < day * 2) ||
+        (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY && counter < (day - 1) * 2) || 
+        (schedule.weekday == SUN_AND_SAT && ((day == SUNDAY && counter < 2) || (day == SATURDAY && counter < 4)))) 
     {
       // Check if it's time to run this schedule
       if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
@@ -745,9 +827,9 @@ void loop()
 
     // Check if this schedule should run today
     byte day = dayOfWeek(currentTime);
-    if ((schedule.weekday == day && counter < 1) || (schedule.weekday == 8 && counter < day) ||
-        (schedule.weekday == 9 && day > 1 && day < 7 && counter < day - 1) || 
-        (schedule.weekday == 10 && ((day == 1 && counter < 1) || (day == 7 && counter < 2))))
+    if ((schedule.weekday == day && counter < 1) || (schedule.weekday == EVERYDAY && counter < day) ||
+        (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY && counter < day - 1) || 
+        (schedule.weekday == SUN_AND_SAT && ((day == SUNDAY && counter < 1) || (day == SATURDAY && counter < 2))))
     {
       // Check if it's time to run this schedule
       if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
