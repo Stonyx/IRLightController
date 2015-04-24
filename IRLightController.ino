@@ -109,8 +109,8 @@ struct TimerSchedule
 // Define global variables
 static EthernetServer gServer(80);
 static ColorValues gCurrentColorValues;
-static byte gMemoryScheduleCounters[MEMORY_SCHEDULE_COUNT / 2];
-static unsigned short int gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 5];
+static byte gMemoryScheduleCounters[MEMORY_SCHEDULE_COUNT / 2]; // Behaves like a struct with two 4 bit fields
+static unsigned short int gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 5]; // Behaves like a struct with five 3 bit fields
 static unsigned long gClearScheduleCountersTime;
 
 // Setup code
@@ -151,81 +151,15 @@ void setup()
   // Set the time for clearing the schedule counters
   gClearScheduleCountersTime = nextSunday(now());
 
-  // Prepare needed variables
-  unsigned long currentTime = now();
-  byte day = dayOfWeek(currentTime);
-  
-  // Loop through the memory schedules
-  for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
-  {
-    // Load the schedule
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
-      schedule);
-
-    // Check if this schedule is active
-    if (schedule.weekday == 0)
-      continue;
-
-    // Calculate how many times this schedule should have run already this week
-    byte count = 0;
-
-    // Adjust the counter
-    gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
-        (count << (i % 2) * 4);
-  }
-  
-  // Loop through the timer schedules
-  for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
-  {
-    // Load the schedule
-    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
-      schedule);
-
-      // Check if this schedule is active
-    if (schedule.weekday == 0)
-      continue;
-
-    // Calculate how many times this schedule should have run already this week
-    byte count = 0;
-    if (schedule.weekday >= 0 && schedule.weekday <= 7 && (schedule.weekday < day || 
-        (schedule.weekday == day && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)))
-    {
-      count = 1;
-    }
-    else if (schedule.weekday == 8)
-    {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-        count = day;
-      else
-        count = day - 1;
-    }
-    else if (schedule.weekday == 9)
-    {
-      if (day > 1 && day < 7 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-        count = day - 1;
-      else 
-        count = day - 2;
-    }
-    else if (schedule.weekday == 10)
-    {
-      if ((day == 1 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight) || 
-          (day > 1 && day < 7))
-        count = 1;
-      else if (day == 7 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-        count = 2;
-    }
-
-    // Adjust the counter
-    gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
-        (count << (i % 5) * 3);
-  }  
+  // Setup the schedule counters
+  setupScheduleCounters();
 
   // Log free memory
   DEBUG_LOG_FREE_RAM();
 }
 
 // Function called to get the time from a NTP server
-unsigned long getNTPTime()
+unsigned long inline getNTPTime()
 {
   // Open a UDP socket
   DEBUG_LOG_LN(F("Opening UDP port ..."));
@@ -309,6 +243,86 @@ unsigned long getNTPTime()
   return time;
 }
 
+// Function called to setup the schedule counters
+void setupScheduleCounters()
+{
+  // Prepare needed variables
+  unsigned long currentTime = now();
+  byte day = dayOfWeek(currentTime);
+  
+  // Loop through the memory schedules
+  for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
+  {
+    // Load the schedule
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+      schedule);
+
+    // Check if this schedule is active
+    if (schedule.weekday == 0)
+      continue;
+
+    // Calculate how many times this schedule should have run already this week
+    byte count = 0;
+
+    // Adjust the counter
+    gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+        (count << (i % 2) * 4);
+  }
+  
+  // Loop through the timer schedules
+  for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
+  {
+    // Load the schedule
+    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
+      schedule);
+
+      // Check if this schedule is active
+    if (schedule.weekday == 0)
+      continue;
+
+    // Calculate how many times this schedule should have run already this week
+    byte count = 0;
+    if (schedule.weekday < 8)
+    {
+      if (day > schedule.weekday || (day == schedule.weekday && 
+          currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight))
+        count = 1;
+    }
+    else if (schedule.weekday == 8)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = day;
+      else
+        count = day - 1;
+    }
+    else if (schedule.weekday == 9)
+    {
+      if (day > 1 && day < 7)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = day - 1;
+        else 
+          count = day - 2;
+      }
+      else if (day == 7)
+      {
+        count = 5;
+      }
+    }
+    else if (schedule.weekday == 10)
+    {
+      if ((day == 1 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight) || day < 7)
+        count = 1;
+      else if (day == 7 && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 2;
+    }
+
+    // Adjust the counter
+    gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
+        (count << (i % 5) * 3);
+  } 
+}
+
 // Function called to handle the index page
 void inline processWebRequest()
 {
@@ -377,9 +391,7 @@ void inline processWebRequest()
           
           // Check if we've just finished reading all the headers
           if (sequencialNewLinesFound == 2)
-          {
             break;
-          }
         }
         else if (character != '\r' && character != '\n')
         {
