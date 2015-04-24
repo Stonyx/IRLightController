@@ -163,10 +163,8 @@ void setup()
   setSyncInterval(3600);
   while (timeStatus() == timeNotSet);
 
-  // Set the time for clearing the schedule counters
-  gClearScheduleCountersTime = nextSunday(now());
-
   // Setup the schedule counters
+  DEBUG_LOG_LN("Initializing schedule counters ...");
   setupScheduleCounters();
 
   // Log free memory
@@ -264,7 +262,7 @@ void setupScheduleCounters()
   // Prepare needed variables
   unsigned long currentTime = now();
   byte day = dayOfWeek(currentTime);
-  
+
   // Loop through the memory schedules
   for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
   {
@@ -303,7 +301,11 @@ void setupScheduleCounters()
     }
     else if (schedule.weekday == MON_TO_FRI)
     {
-      if (day >= MONDAY && day <= FRIDAY)
+      if (day == SATURDAY)
+      {
+        count = 10;
+      }
+      else if (day >= MONDAY /* && day <= FRIDAY*/)
       {
         if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
           count = (day - 1) * 2;
@@ -311,31 +313,27 @@ void setupScheduleCounters()
           count = (day - 1) * 2 - 1;
         else 
           count = (day - 2) * 2;
-      }
-      else if (day == SATURDAY)
-      {
-        count = 10;
-      }
+      }     
     }
     else if (schedule.weekday == SUN_AND_SAT)
     {
-      if (day == SUNDAY)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
-          count = 2;
-        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = 1;
-      }
-      else if (day < SATURDAY)
-      {
-        count = 2;
-      }
-      else if (day == SATURDAY)
+      if (day == SATURDAY)
       {
         if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
           count = 4;
         else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
           count = 3;
+      }
+      else if (day > SUNDAY)
+      {
+        count = 2;
+      }
+      else // if (day == SUNDAY)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
+          count = 2;
+        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = 1;
       }
     }
 
@@ -359,9 +357,15 @@ void setupScheduleCounters()
     byte count = 0;
     if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
     {
-      if (day > schedule.weekday || (day == schedule.weekday && 
-          currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight))
+      if (day > schedule.weekday)
+      {
         count = 1;
+      }
+      else if (day == schedule.weekday)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+          count = 1;
+      }
     }
     else if (schedule.weekday == EVERYDAY)
     {
@@ -372,30 +376,34 @@ void setupScheduleCounters()
     }
     else if (schedule.weekday == MON_TO_FRI)
     {
-      if (day >= MONDAY && day <= FRIDAY)
+      if (day == SATURDAY)
+      {
+        count = 5;
+      }
+      else if (day >= MONDAY /* && day <= FRIDAY*/)
       {
         if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
           count = day - 1;
         else 
           count = day - 2;
       }
-      else if (day == SATURDAY)
-      {
-        count = 5;
-      }
     }
     else if (schedule.weekday == SUN_AND_SAT)
     {
-      if ((day == SUNDAY && currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight) ||
-          (day > SUNDAY && day < SATURDAY))
-      {
-        count = 1;
-      }
-      else if (day == SATURDAY)
+      if (day == SATURDAY)
       {
         if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
           count = 2;
         else 
+          count = 1;
+      }
+      else if (day > SUNDAY)
+      {
+        count = 1;
+      }
+      else // if (day == SUNDAY)
+      {
+        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
           count = 1;
       }
     }
@@ -404,6 +412,9 @@ void setupScheduleCounters()
     gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
         (count << (i % 5) * 3);
   } 
+
+  // Set the time for clearing the schedule counters
+  gClearScheduleCountersTime = nextSunday(currentTime);
 }
 
 // Function called to handle the index page
