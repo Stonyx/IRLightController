@@ -121,7 +121,7 @@ struct TimerSchedule
 static EthernetServer gServer(80);
 static ColorValues gCurrentColorValues;
 static byte gMemoryScheduleCounters[MEMORY_SCHEDULE_COUNT / 2]; // Behaves like a struct with two 4 bit fields
-static unsigned short int gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 5]; // Behaves like a struct with five 3 bit fields
+static unsigned short gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 5]; // Behaves like a struct with five 3 bit fields
 static unsigned long gClearScheduleCountersTime;
 
 // Setup code
@@ -193,8 +193,20 @@ unsigned long inline getNTPTime()
   // Send the NTP request
   DEBUG_LOG_LN(F("Sending UDP packet ..."));
   const char timeServer[] = "pool.ntp.org";
-  // TODO: check if the upd.write statement will work in an overflow situation
-  if (!(udp.beginPacket(timeServer, 123) && udp.write((byte *)&packet, 48) == 48 && udp.endPacket()))
+  if (!udp.beginPacket(timeServer, 123))
+  {
+    DEBUG_LOG_LN(F("Failed to send UDP packet"));
+    return 0;
+  }
+  for (byte i = 0; i < 12; ++i)
+  {
+    if (udp.write((byte *)&packet, 4) != 4)
+    {
+      DEBUG_LOG_LN(F("Failed to send UDP packet"));
+      return 0;
+    }
+  }
+  if (!udp.endPacket())
   {
     DEBUG_LOG_LN(F("Failed to send UDP packet"));
     return 0;
@@ -516,35 +528,41 @@ void inline processWebRequest()
     DEBUG_LOG_LN(string);
   
     // Check what kind of request this is
-    if (strncasecmp(string, "/get?", 5) == 0 && stringLength > 10)
+    if (stringLength > 10)
     {
-      // Send the headers
-      client.println(F("HTTP/1.1 200 OK"));
-      client.println(F("Content-Type: application/octet-stream"));
-      client.println(F("Connection: close"));
-    
-      // Figure out which data is being requested
-      if (strcasecmp((char *)string[stringLength - 7], "?memval") == 0)
+      if (strncasecmp(string, "/get?", 5) == 0)
       {
-        for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
+        // Send the headers
+        client.println(F("HTTP/1.1 200 OK"));
+        client.println(F("Content-Type: application/octet-stream"));
+        client.println(F("Connection: close"));
+      
+        // Figure out which data is being requested
+        if (strcasecmp((char *)string[stringLength - 7], "?colval") == 0)
         {
-          client.write(EEPROM.read(i));
+          // Read the data
+          for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
+          {
+            client.write(EEPROM.read(i));
+          }
         }
+        else if (strcasecmp((char *)string[stringLength - 9], "?memsched") == 0)
+        {
+          // Read the data
+          for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
+          {
+            client.write(EEPROM.read(i));
+          }
+        }
+        else if (strcasecmp((char *)string[stringLength - 10], "?timesched") == 0)
+        {
+          // Read the data
+          for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
+          {
+            client.write(EEPROM.read(i));
+          }
+        }    
       }
-      else if (strcasecmp((char *)string[stringLength - 9], "?memsched") == 0)
-      {
-        for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
-        {
-          client.write(EEPROM.read(i));
-        }
-      }
-      else if (strcasecmp((char *)string[stringLength - 10], "?timesched") == 0)
-      {
-        for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
-        {
-          client.write(EEPROM.read(i));
-        }
-      }    
     }
     else if (strcasecmp(string, "/restart") == 0)
     {
@@ -555,33 +573,45 @@ void inline processWebRequest()
     else 
     {
       // Check if we are saving data first
-      if (strncasecmp(string, "/save?", 6) == 0 && stringLength > 10)
+      if (stringLength > 10)
       {
-        // Figure out which data is being saved
-        if (strcasecmp((char *)string[stringLength - 7], "?memval") == 0)
+        if (strncasecmp(string, "/save?", 6) == 0)
         {
-          for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
+          // Figure out which data is being saved
+          if (strcasecmp((char *)string[stringLength - 7], "?colval") == 0)
           {
-            EEPROM.update(client.read(), i);
+            // Save the data
+            for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
+            {
+              EEPROM.update(client.read(), i);
+            }
           }
-        }
-        else if (strcasecmp((char *)string[stringLength - 9], "?memsched") == 0)
-        {
-          for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
+          else if (strcasecmp((char *)string[stringLength - 9], "?memsched") == 0)
           {
-            EEPROM.update(client.read(), i);
+            // Save the data
+            for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
+            {
+              EEPROM.update(client.read(), i);
+            }
+
+            // Re-setup the schedule counters
+            setupScheduleCounters();
           }
-        }
-        else if (strcasecmp((char *)string[stringLength - 10], "?timesched") == 0)
-        {
-          for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
+          else if (strcasecmp((char *)string[stringLength - 10], "?timesched") == 0)
           {
-            EEPROM.update(client.read(), i);
+            // Save the data
+            for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
+            {
+              EEPROM.update(client.read(), i);
+            }
+
+            // Re-setup the schedule counters
+            setupScheduleCounters();
           }
+      
+          // Change the URL to the index page
+          strcpy(string, "/index.htm");
         }
-    
-        // Change the URL to the index page
-        strcpy(string, "/index.htm");
       }
       
       // Open the requsted file
@@ -641,6 +671,11 @@ void inline processWebRequest()
 // Main code
 void loop()
 {
+  // Check if the DHCP lease needs to be renewed
+  #ifndef DEBUG
+  Ethernet.maintain();
+  #endif
+
   // Process any web requests
   processWebRequest();
 
@@ -687,7 +722,7 @@ void loop()
     }
     else if (currentTime > stop - SECS_PER_WEEK && stop - SECS_PER_WEEK > prevScheduleStop)
     {
-      prevSchedule = 1;
+      prevSchedule = i;
       prevScheduleStop = stop - SECS_PER_WEEK;
     }
     // Check if this schedule hasn't started yet and if it's the closest next schedule
@@ -752,7 +787,7 @@ void loop()
   {
     // Clear the counters
     memset(&gMemoryScheduleCounters, 0, sizeof(byte) * MEMORY_SCHEDULE_COUNT / 2);
-    memset(&gTimerScheduleCounters, 0, sizeof(unsigned short int) * TIMER_SCHEDULE_COUNT / 5);
+    memset(&gTimerScheduleCounters, 0, sizeof(unsigned short) * TIMER_SCHEDULE_COUNT / 5);
     
     // Set the new time for clearing the counters
     gClearScheduleCountersTime = nextSunday(currentTime);
