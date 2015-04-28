@@ -1,0 +1,11 @@
+@charset "UTF-8";
+
+.container
+{
+  max-width: 600px;
+}
+
+h3
+{
+  color: #337AB7;
+}

@@ -528,40 +528,71 @@ void inline processWebRequest()
     DEBUG_LOG_LN(string);
   
     // Check what kind of request this is
-    if (stringLength >= 10)
+    if (strncasecmp(string, "/get?", 5) == 0)
     {
-      if (strncasecmp(string, "/get?", 5) == 0)
+      // Send the headers
+      client.println(F("HTTP/1.1 200 OK"));
+      client.println(F("Content-Type: application/octet-stream"));
+      client.println(F("Connection: close"));
+    
+      // Figure out which data is being requested
+      if (strcasecmp(string, "/get?col") == 0)
       {
-        // Send the headers
-        client.println(F("HTTP/1.1 200 OK"));
-        client.println(F("Content-Type: application/octet-stream"));
-        client.println(F("Connection: close"));
-      
-        // Figure out which data is being requested
-        if (strcasecmp((char *)string[stringLength - 7], "?colval") == 0)
+        // Read the data
+        for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
         {
-          // Read the data
-          for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
-          {
-            client.write(EEPROM.read(i));
-          }
+          client.write(EEPROM.read(i));
         }
-        else if (strcasecmp((char *)string[stringLength - 9], "?memsched") == 0)
+      }
+      else if (strcasecmp(string, "/get?mem") == 0)
+      {
+        // Read the data
+        for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
         {
-          // Read the data
-          for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
-          {
-            client.write(EEPROM.read(i));
-          }
+          client.write(EEPROM.read(i));
         }
-        else if (strcasecmp((char *)string[stringLength - 10], "?timesched") == 0)
+      }
+      else if (strcasecmp(string, "/get?time") == 0)
+      {
+        // Read the data
+        for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
         {
-          // Read the data
-          for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
-          {
-            client.write(EEPROM.read(i));
-          }
-        }    
+          client.write(EEPROM.read(i));
+        }
+      }    
+    }
+    else if (strncasecmp(string, "/save?", 6) == 0)
+    {
+      // Figure out which data is being saved
+      if (strcasecmp(string, "/save?col") == 0)
+      {
+        // Save the data
+        for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
+        {
+          EEPROM.update(i, client.read());
+        }
+      }
+      else if (strcasecmp(string, "/save?mem") == 0)
+      {
+        // Save the data
+        for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
+        {
+          EEPROM.update(i, client.read());
+        }
+
+        // Re-setup the schedule counters
+        setupScheduleCounters();
+      }
+      else if (strcasecmp(string, "/save?time") == 0)
+      {
+        // Save the data
+        for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
+        {
+          EEPROM.update(i, client.read());
+        }
+
+        // Re-setup the schedule counters
+        setupScheduleCounters();
       }
     }
     else if (strcasecmp(string, "/reset") == 0)
@@ -582,48 +613,6 @@ void inline processWebRequest()
     }
     else 
     {
-      // Check if we are saving data first
-      if (stringLength >= 10)
-      {
-        if (strncasecmp(string, "/save?", 6) == 0)
-        {
-          // Figure out which data is being saved
-          if (strcasecmp((char *)string[stringLength - 7], "?colval") == 0)
-          {
-            // Save the data
-            for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
-            {
-              EEPROM.update(i, client.read());
-            }
-          }
-          else if (strcasecmp((char *)string[stringLength - 9], "?memsched") == 0)
-          {
-            // Save the data
-            for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
-            {
-              EEPROM.update(i, client.read());
-            }
-
-            // Re-setup the schedule counters
-            setupScheduleCounters();
-          }
-          else if (strcasecmp((char *)string[stringLength - 10], "?timesched") == 0)
-          {
-            // Save the data
-            for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
-            {
-              EEPROM.update(i, client.read());
-            }
-
-            // Re-setup the schedule counters
-            setupScheduleCounters();
-          }
-      
-          // Change the URL to the index page
-          strcpy(string, "/index.htm");
-        }
-      }
-      
       // Open the requsted file
       File file = SD.open(string);
       if (!file)
