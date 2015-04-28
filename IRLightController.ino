@@ -528,7 +528,7 @@ void inline processWebRequest()
     DEBUG_LOG_LN(string);
   
     // Check what kind of request this is
-    if (stringLength > 10)
+    if (stringLength >= 10)
     {
       if (strncasecmp(string, "/get?", 5) == 0)
       {
@@ -564,6 +564,16 @@ void inline processWebRequest()
         }    
       }
     }
+    else if (strcasecmp(string, "/reset") == 0)
+    {
+      // Write zeros to all of the EEPROM
+      DEBUG_LOG_LN("Resetting EEPROM ...");
+      for (unsigned short i = 0; i < 1024; ++i)
+      {
+        if (EEPROM.read(i) != 0)
+          EEPROM.write(i, 0);        
+      }
+    }
     else if (strcasecmp(string, "/restart") == 0)
     {
       // Do a soft restart
@@ -573,7 +583,7 @@ void inline processWebRequest()
     else 
     {
       // Check if we are saving data first
-      if (stringLength > 10)
+      if (stringLength >= 10)
       {
         if (strncasecmp(string, "/save?", 6) == 0)
         {
@@ -583,7 +593,7 @@ void inline processWebRequest()
             // Save the data
             for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
             {
-              EEPROM.update(client.read(), i);
+              EEPROM.update(i, client.read());
             }
           }
           else if (strcasecmp((char *)string[stringLength - 9], "?memsched") == 0)
@@ -591,7 +601,7 @@ void inline processWebRequest()
             // Save the data
             for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
             {
-              EEPROM.update(client.read(), i);
+              EEPROM.update(i, client.read());
             }
 
             // Re-setup the schedule counters
@@ -602,7 +612,7 @@ void inline processWebRequest()
             // Save the data
             for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
             {
-              EEPROM.update(client.read(), i);
+              EEPROM.update(i, client.read());
             }
 
             // Re-setup the schedule counters
