@@ -507,7 +507,9 @@ void inline processWebRequest()
   
     // Check what kind of request this is
     bool responseSent = false;
-    if (strncasecmp(string, "/get?", 5) == 0)
+    if (strcasecmp(string, "/get?t") == 0 || strcasecmp(string, "/get?ccv") == 0 || 
+        strcasecmp(string, "/get?cv") == 0 || strcasecmp(string, "/get?ms") == 0 || 
+        strcasecmp(string, "/get?ts") == 0)
     {
       // Send the headers
       client.println(F("HTTP/1.1 200 OK"));
@@ -515,7 +517,16 @@ void inline processWebRequest()
       client.println(F("Connection: close\n"));
     
       // Figure out which data is being requested
-      if (strcasecmp(string, "/get?col") == 0)
+      if (strcasecmp(string, "/get?t") == 0) // t = time
+      {
+        unsigned long currentTime = now();
+        client.write((byte *)&currentTime, sizeof(unsigned long));
+      }
+      else if (strcasecmp(string, "/get?ccv") == 0) // ccv = current color values
+      {
+        client.write((byte *)&gCurrentColorValues, sizeof(ColorValues));
+      }
+      else if (strcasecmp(string, "/get?cv") == 0) // cv = color values
       {
         // Send the data
         for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
@@ -523,7 +534,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      else if (strcasecmp(string, "/get?mem") == 0)
+      else if (strcasecmp(string, "/get?ms") == 0) // ms = memory schedules
       {
         // Send the data
         for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
@@ -531,7 +542,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      else if (strcasecmp(string, "/get?time") == 0)
+      else if (strcasecmp(string, "/get?ts") == 0) // ts = timer schedules
       {
         // Send the data 
         for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
@@ -543,7 +554,7 @@ void inline processWebRequest()
       // Set the response sent flag
       responseSent = true; 
     }
-    else if (strcasecmp(string, "/save?col") == 0)
+    else if (strcasecmp(string, "/save?cv") == 0) // cv = color values
     {
       // Save the data
       for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
@@ -551,7 +562,7 @@ void inline processWebRequest()
         EEPROM.update(i, client.read());
       }
     }
-    else if (strcasecmp(string, "/save?mem") == 0)
+    else if (strcasecmp(string, "/save?ms") == 0) // ms = memory schedules
     {
       // Save the data
       for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
@@ -562,7 +573,7 @@ void inline processWebRequest()
       // Re-setup the schedule counters
       setupScheduleCounters();
     }
-    else if (strcasecmp(string, "/save?time") == 0)
+    else if (strcasecmp(string, "/save?ts") == 0) // ts = timer schedules
     {
       // Save the data
       for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
@@ -583,10 +594,10 @@ void inline processWebRequest()
           EEPROM.write(i, 0);        
       }
     }
-    else if (strcasecmp(string, "/restart") == 0)
+    else if (strcasecmp(string, "/reboot") == 0)
     {
       // Do a soft restart
-      DEBUG_LOG_LN(F("Restarting ..."));
+      DEBUG_LOG_LN(F("Rebooting ..."));
       asm volatile("jmp 0");
     }
     else 
@@ -606,11 +617,11 @@ void inline processWebRequest()
         {
           if (strcasecmp((char *)string[stringLength - 4], ".htm") == 0)
             type = F("text/html");
-          if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
+          else if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
             type = F("text/css");
-          else if (stringLength > 4 && strcasecmp((char *)string[stringLength - 4], ".jpg") == 0)
+          else if (strcasecmp((char *)string[stringLength - 4], ".jpg") == 0)
             type = F("image/jpeg");
-          else if (stringLength > 4 && strcasecmp((char *)string[stringLength - 4], ".png") == 0)
+          else if (strcasecmp((char *)string[stringLength - 4], ".png") == 0)
             type = F("image/png");      
         }
 
