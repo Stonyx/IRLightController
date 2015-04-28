@@ -460,36 +460,13 @@ void inline processWebRequest()
         DEBUG_LOG(character);
         DEBUG_LOG_LN(F("' character from request header"));
         
-        // Check if we're at a seperation point between the three entries on the first line of
-        //   the request header
-        if (character == ' ' && prevCharacter != '\0' && prevCharacter != ' ' && spacesFound < 2)
+        // Check if we're at a seperation point between entries
+        if (character == ' ' && prevCharacter != '\0' && prevCharacter != ' ')
         {
           // Increment the space counter
           ++spacesFound;
-
-          // Check if we've just finished reading the first entry
-          if (spacesFound == 1)
-          {
-            // Make sure this is a GET or POST request
-            if (strcasecmp(string, "GET") != 0 && strcasecmp(string, "POST") != 0)
-            {
-              // Send an error message
-              client.println(F("HTTP/1.1 405 Method Not Allowed"));
-              client.println(F("Content-Type: text/html"));
-              client.println(F("Connection: close"));
-              
-              // Close the connection
-              delay(1);
-              client.stop();
-              
-              return;
-            }
-            
-            // Clear the string to start reading the next entry
-            memset(&string, 0, URL_MAX_LENGTH);
-            stringLength = 0;
-          }
         }
+        // Check if we're at the end of a line
         else if (character == '\n')
         {
           // Increment the sequencial new line counter
@@ -499,14 +476,15 @@ void inline processWebRequest()
           if (sequencialNewLinesFound == 2)
             break;
         }
+        // Check if we're not at the end of a line
         else if (character != '\r' && character != '\n')
         {
           // Reset the sequencial new line counter
           sequencialNewLinesFound = 0;
         }
           
-        // Add the character to the string (if we're reading the first or second entry)
-        if (spacesFound < 2 && stringLength < URL_MAX_LENGTH - 1)
+        // Add the character to the string (if we're reading the second entry on the first line)
+        if (spacesFound == 1 && stringLength < URL_MAX_LENGTH - 1)
         {
           // Add the character to the string and increase the size counter
           string[stringLength] = character;
@@ -528,17 +506,18 @@ void inline processWebRequest()
     DEBUG_LOG_LN(string);
   
     // Check what kind of request this is
+    bool responseSent = false;
     if (strncasecmp(string, "/get?", 5) == 0)
     {
       // Send the headers
       client.println(F("HTTP/1.1 200 OK"));
       client.println(F("Content-Type: application/octet-stream"));
-      client.println(F("Connection: close"));
+      client.println(F("Connection: close\n"));
     
       // Figure out which data is being requested
       if (strcasecmp(string, "/get?col") == 0)
       {
-        // Read the data
+        // Send the data
         for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
@@ -546,7 +525,7 @@ void inline processWebRequest()
       }
       else if (strcasecmp(string, "/get?mem") == 0)
       {
-        // Read the data
+        // Send the data
         for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
@@ -554,46 +533,45 @@ void inline processWebRequest()
       }
       else if (strcasecmp(string, "/get?time") == 0)
       {
-        // Read the data
+        // Send the data 
         for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
         }
-      }    
+      }
+
+      // Set the response sent flag
+      responseSent = true; 
     }
-    else if (strncasecmp(string, "/save?", 6) == 0)
+    else if (strcasecmp(string, "/save?col") == 0)
     {
-      // Figure out which data is being saved
-      if (strcasecmp(string, "/save?col") == 0)
+      // Save the data
+      for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
       {
-        // Save the data
-        for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
-        {
-          EEPROM.update(i, client.read());
-        }
+        EEPROM.update(i, client.read());
       }
-      else if (strcasecmp(string, "/save?mem") == 0)
+    }
+    else if (strcasecmp(string, "/save?mem") == 0)
+    {
+      // Save the data
+      for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
       {
-        // Save the data
-        for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
-        {
-          EEPROM.update(i, client.read());
-        }
+        EEPROM.update(i, client.read());
+      }
 
-        // Re-setup the schedule counters
-        setupScheduleCounters();
-      }
-      else if (strcasecmp(string, "/save?time") == 0)
+      // Re-setup the schedule counters
+      setupScheduleCounters();
+    }
+    else if (strcasecmp(string, "/save?time") == 0)
+    {
+      // Save the data
+      for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
       {
-        // Save the data
-        for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
-        {
-          EEPROM.update(i, client.read());
-        }
-
-        // Re-setup the schedule counters
-        setupScheduleCounters();
+        EEPROM.update(i, client.read());
       }
+
+      // Re-setup the schedule counters
+      setupScheduleCounters();
     }
     else if (strcasecmp(string, "/reset") == 0)
     {
@@ -613,52 +591,51 @@ void inline processWebRequest()
     }
     else 
     {
-      // Open the requsted file
+      // Open the requested file
       File file = SD.open(string);
-      if (!file)
+      if (file)
       {
-        // Send an error message
-        client.println(F("HTTP/1.1 404 File Not Found"));
-        client.println(F("Content-Type: text/html"));
-        client.println(F("Connection: close"));
-        
-        // Close the connection
-        delay(1);
-        client.stop();
-        
-        return;
-      }
-      
-      // Figure out the content type
-      const __FlashStringHelper* type;
-      if (stringLength > 3)
-      {
-        if (strcasecmp((char*)string[stringLength - 3], ".js") == 0)
-          type = F("text/javascript");
-      }
-      if (stringLength > 4)
-      {
-        if (strcasecmp((char *)string[stringLength - 4], ".htm") == 0)
-          type = F("text/html");
-        if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
-          type = F("text/css");
-        else if (stringLength > 4 && strcasecmp((char *)string[stringLength - 4], ".jpg") == 0)
-          type = F("image/jpeg");
-        else if (stringLength > 4 && strcasecmp((char *)string[stringLength - 4], ".png") == 0)
-          type = F("image/png");      
-      }
+        // Figure out the content type
+        const __FlashStringHelper* type;
+        if (stringLength > 3)
+        {
+          if (strcasecmp((char*)string[stringLength - 3], ".js") == 0)
+            type = F("text/javascript");
+        }
+        if (stringLength > 4)
+        {
+          if (strcasecmp((char *)string[stringLength - 4], ".htm") == 0)
+            type = F("text/html");
+          if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
+            type = F("text/css");
+          else if (stringLength > 4 && strcasecmp((char *)string[stringLength - 4], ".jpg") == 0)
+            type = F("image/jpeg");
+          else if (stringLength > 4 && strcasecmp((char *)string[stringLength - 4], ".png") == 0)
+            type = F("image/png");      
+        }
 
-      // Send the file
+        // Send the file
+        client.println(F("HTTP/1.1 200 OK"));
+        client.print(F("Content-Type: "));
+        client.println(type);
+        client.println(F("Connection: close\n"));
+        while (file.available())
+        {
+          client.write(file.read());
+        }
+        file.close();   
+
+        // Set the response sent flag
+        responseSent = true;
+      }  
+    }
+
+    // Check if we still need to send a response
+    if (responseSent == false)
+    {
       client.println(F("HTTP/1.1 200 OK"));
-      client.print(F("Content-Type: "));
-      client.println(type);
-      client.println(F("Connection: close"));
-      client.println(); 
-      while (file.available())
-      {
-        client.write(file.read());
-      }
-      file.close();      
+      client.print(F("Content-Type: text/html"));
+      client.println(F("Connection: close\n"));
     }
 
     // Close the connection
