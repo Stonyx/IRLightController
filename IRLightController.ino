@@ -523,12 +523,12 @@ void inline processWebRequest()
         unsigned long currentTime = now();
         client.write((byte *)&currentTime, sizeof(unsigned long));
       }
-      else if (strcasecmp(string, "/get?ccv") == 0) // ccv = current color values
+      /* else */ if (strcasecmp(string, "/get?ccv") == 0) // ccv = current color values
       {
         // Send the data
         client.write((byte *)&gCurrentColorValues, sizeof(ColorValues));
       }
-      else if (strcasecmp(string, "/get?cv") == 0) // cv = color values
+      /* else */ if (strcasecmp(string, "/get?cv") == 0) // cv = color values
       {
         // Send the data
         for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
@@ -536,7 +536,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      else if (strcasecmp(string, "/get?ms") == 0) // ms = memory schedules
+      /* else */ if (strcasecmp(string, "/get?ms") == 0) // ms = memory schedules
       {
         // Send the data
         for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
@@ -544,7 +544,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      else if (strcasecmp(string, "/get?ts") == 0) // ts = timer schedules
+      /* else */ if (strcasecmp(string, "/get?ts") == 0) // ts = timer schedules
       {
         // Send the data 
         for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
@@ -610,22 +610,14 @@ void inline processWebRequest()
       {
         // Figure out the content type
         const __FlashStringHelper* type;
-        if (stringLength > 3)
-        {
-          if (strcasecmp((char*)string[stringLength - 3], ".js") == 0)
-            type = F("text/javascript");
-        }
-        if (stringLength > 4)
-        {
-          if (strcasecmp((char *)string[stringLength - 4], ".htm") == 0)
-            type = F("text/html");
-          else if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
-            type = F("text/css");
-          else if (strcasecmp((char *)string[stringLength - 4], ".jpg") == 0)
-            type = F("image/jpeg");
-          else if (strcasecmp((char *)string[stringLength - 4], ".png") == 0)
-            type = F("image/png");      
-        }
+        if (strcasecmp((char *)string[stringLength - 4], ".htm") == 0)
+          type = F("text/html");
+        /* else */ if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
+          type = F("text/css");
+        /* else */ if (strcasecmp((char*)string[stringLength - 3], ".js") == 0)
+          type = F("text/javascript");
+        /* else */ if (strcasecmp((char *)string[stringLength - 4], ".png") == 0)
+          type = F("image/png");      
 
         // Send the file
         client.println(F("HTTP/1.1 200 OK"));
