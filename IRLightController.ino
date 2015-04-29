@@ -519,11 +519,13 @@ void inline processWebRequest()
       // Figure out which data is being requested
       if (strcasecmp(string, "/get?t") == 0) // t = time
       {
+        // Send the data
         unsigned long currentTime = now();
         client.write((byte *)&currentTime, sizeof(unsigned long));
       }
       else if (strcasecmp(string, "/get?ccv") == 0) // ccv = current color values
       {
+        // Send the data
         client.write((byte *)&gCurrentColorValues, sizeof(ColorValues));
       }
       else if (strcasecmp(string, "/get?cv") == 0) // cv = color values
