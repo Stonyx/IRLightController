@@ -716,12 +716,11 @@ void inline processWebRequest()
     }
     else if (strcasecmp(string, "/reset") == 0)
     {
-      // Reset all EEPROM saved settings
-      DEBUG_LOG_LN("Resetting EEPROM ...");
+      // Reset all saved settings
+      DEBUG_LOG_LN("Resetting saved settings ...");
       for (unsigned short i = 0; i < TIMER_SCHEDULE_LOCATION_END; ++i)
       {
-        if (EEPROM.read(i) != 0)
-          EEPROM.write(i, 0);        
+        EEPROM.update(i, 0);
       }
     }
     else if (strcasecmp(string, "/reboot") == 0)
@@ -771,7 +770,7 @@ void inline processWebRequest()
     }
 
     // Close the connection
-    delay(1);
+    delay(10);
     client.stop();
   }
 }
@@ -810,102 +809,93 @@ void loop()
     gClearScheduleCountersTime = nextSunday(time);
   }
 
-  // Place this section in its own scope
+  // Preapre the IR code array
+  FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
+      MOONLIGHT_CODE);
+
+  // Loop through the memory schedules
+  for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
   {
-    // Preapre the IR code array
-    FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
-        MOONLIGHT_CODE);
+    // Load the schedule
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+      schedule);
 
-    // Loop through the memory schedules
-    for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
+    // Load the count for this shedule
+    byte count = (gMemoryScheduleCounters[i / 2] >> (i % 2) * 4) & 0x0F;
+
+    // Check if it's time to run this schedule
+    if (count < calcMemoryScheduleCount(time, midnight, day, schedule))
     {
-      // Load the schedule
-      MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
-        schedule);
-
-      // Load the count for this shedule
-      byte count = (gMemoryScheduleCounters[i / 2] >> (i % 2) * 4) & 0x0F;
-
-      // Check if it's time to run this schedule
-      if (count < calcMemoryScheduleCount(time, midnight, day, schedule))
-      {
-        // Send the IR signal
-        IRsend irSend;
-        irSend.sendNEC(memoryIRCodes[schedule.button], 32);
-        delay(333);
-     
-        // Increment the counter
-        gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
-            (++count << (i % 2) * 4);
-      }
+      // Send the IR signal
+      IRsend irSend;
+      irSend.sendNEC(memoryIRCodes[schedule.button], 32);
+      delay(333);
+   
+      // Increment the counter
+      gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+          (++count << (i % 2) * 4);
     }
   }
 
-  // Place this section in its own scope
+  // Prepare the IR code array
+  FLASH_ARRAY(unsigned long, timerIRCodes, SET_CLOCK_CODE, ON_TIME_CODE, OFF_TIME_CODE,
+      POWER_CODE, HOUR_UP_CODE, MINUTE_DOWN_CODE, ENTER_CODE, RESUME_CODE, SUNLIGHT_CODE,
+      FULL_SPECTRUM_CODE, CRISP_BLUE_CODE, DEEP_WATER_CODE, RED_UP_CODE, GREEN_UP_CODE,
+      BLUE_UP_CODE, WHITE_UP_CODE, RED_DOWN_CODE, GREEN_DOWN_CODE, BLUE_DOWN_CODE,
+      WHITE_DOWN_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, MOONLIGHT_CODE, DYNAMIC_MOON_CODE,
+      DYNAMIC_LIGHTNING_CODE, DYNAMIC_CLOUD_CODE, DYNAMIC_FADE_CODE);
+
+  // Loop through the timer schedules
+  for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
   {
-    // Prepare the IR code array
-    FLASH_ARRAY(unsigned long, timerIRCodes, SET_CLOCK_CODE, ON_TIME_CODE, OFF_TIME_CODE,
-        POWER_CODE, HOUR_UP_CODE, MINUTE_DOWN_CODE, ENTER_CODE, RESUME_CODE, SUNLIGHT_CODE,
-        FULL_SPECTRUM_CODE, CRISP_BLUE_CODE, DEEP_WATER_CODE, RED_UP_CODE, GREEN_UP_CODE,
-        BLUE_UP_CODE, WHITE_UP_CODE, RED_DOWN_CODE, GREEN_DOWN_CODE, BLUE_DOWN_CODE,
-        WHITE_DOWN_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, MOONLIGHT_CODE, DYNAMIC_MOON_CODE,
-        DYNAMIC_LIGHTNING_CODE, DYNAMIC_CLOUD_CODE, DYNAMIC_FADE_CODE);
+    // Load the schedule
+    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
+      schedule);
 
-    // Loop through the timer schedules
-    for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
+    // Load the count for this shedule
+    byte count = (gTimerScheduleCounters[i / 5] >> (i % 5) * 3) & 0x0007;
+
+    // Check if it's time to run this schedule
+    if (count < calcTimerScheduleCount(time, midnight, day, schedule))
     {
-      // Load the schedule
-      TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
-        schedule);
-  
-      // Load the count for this shedule
-      byte count = (gTimerScheduleCounters[i / 5] >> (i % 5) * 3) & 0x0007;
-
-      // Check if it's time to run this schedule
-      if (count < calcTimerScheduleCount(time, midnight, day, schedule))
-      {
-        // Send the IR signal
-        IRsend irSend;
-        irSend.sendNEC(timerIRCodes[schedule.button], 32);
-        delay(333);
-        
-        // Increment the counter   
-        gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
-            (++count << (i % 5) * 3);   
-      }  
-    }
+      // Send the IR signal
+      IRsend irSend;
+      irSend.sendNEC(timerIRCodes[schedule.button], 32);
+      delay(333);
+      
+      // Increment the counter   
+      gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
+          (++count << (i % 5) * 3);   
+    }  
   }
 
-  // Place this section in its own scope
+  // Calculate the current color values
+  byte prevSchedule;
+  ColorValues calcValues = calcColorValues(time, day, true, prevSchedule);
+
+  // Prepare the IR code array
+  FLASH_ARRAY(unsigned long, irCodes, RED_UP_CODE, RED_DOWN_CODE, GREEN_UP_CODE, GREEN_DOWN_CODE, BLUE_UP_CODE,
+      BLUE_DOWN_CODE, WHITE_UP_CODE, WHITE_DOWN_CODE);
+
+  // Loop through the colors
+  for (byte i = 0; i < 4; ++i)
   {
-    // Calculate the current color values
-    byte prevSchedule;
-    ColorValues calcValues = calcColorValues(time, day, true, prevSchedule);
-
-    // Prepare the IR code array
-    FLASH_ARRAY(unsigned long, irCodes, RED_UP_CODE, RED_DOWN_CODE, GREEN_UP_CODE, GREEN_DOWN_CODE, BLUE_UP_CODE,
-        BLUE_DOWN_CODE, WHITE_UP_CODE, WHITE_DOWN_CODE);
-
-    // Loop through the colors
-    for (byte i = 0; i < 4; ++i)
+    // Check if we have to adjust the colors
+    if (((byte *)&calcValues)[i] < ((byte *)&gCurrentColorValues)[i])
     {
-      // Check if we have to adjust the colors
-      if (((byte *)&calcValues)[i] < ((byte *)&gCurrentColorValues)[i])
-      {
-        // Send the IR code, wait, and adjust the current color value
-        IRsend irSend;
-        irSend.sendNEC(irCodes[i * 2], 32);
-        delay(333);
-        ++((byte*)&gCurrentColorValues)[i];
-      }
-      else if (((byte *)&calcValues)[i] > ((byte*)&gCurrentColorValues)[i])
-      {
-        // Send the IR code, wait, and adjust the current color value
-        IRsend irSend;
-        irSend.sendNEC(irCodes[i * 2 + 1], 32);
-        delay(333);
-        --((byte *)&gCurrentColorValues)[i];
-      }
+      // Send the IR code, wait, and adjust the current color value
+      IRsend irSend;
+      irSend.sendNEC(irCodes[i * 2], 32);
+      delay(333);
+      ++((byte*)&gCurrentColorValues)[i];
+    }
+    else if (((byte *)&calcValues)[i] > ((byte*)&gCurrentColorValues)[i])
+    {
+      // Send the IR code, wait, and adjust the current color value
+      IRsend irSend;
+      irSend.sendNEC(irCodes[i * 2 + 1], 32);
+      delay(333);
+      --((byte *)&gCurrentColorValues)[i];
     }
   }
 }
