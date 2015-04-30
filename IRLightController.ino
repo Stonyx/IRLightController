@@ -123,6 +123,15 @@ static ColorValues gCurrentColorValues;
 static byte gMemoryScheduleCounters[MEMORY_SCHEDULE_COUNT / 2]; // Behaves like a struct with two 4 bit fields
 static unsigned short gTimerScheduleCounters[TIMER_SCHEDULE_COUNT / 5]; // Behaves like a struct with five 3 bit fields
 static unsigned long gClearScheduleCountersTime;
+static bool gReboot = false;
+
+// Declare functions
+unsigned long getNtpTime();
+void initializeStuff();
+ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevSchedule);
+byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte day, MemorySchedule schedule);
+byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day, TimerSchedule schedule);
+void inline processWebRequest();
 
 // Setup code
 void setup()
@@ -159,20 +168,20 @@ void setup()
   
   // Start the time sync
   DEBUG_LOG_LN(F("Synching time with NTP server ..."));
-  setSyncProvider(&getNTPTime);
+  setSyncProvider(&getNtpTime);
   setSyncInterval(3600);
   while (timeStatus() == timeNotSet);
 
   // Setup the schedule counters
-  DEBUG_LOG_LN("Initializing schedule counters ...");
-  setupScheduleCounters();
+  DEBUG_LOG_LN("Initializing stuff ...");
+  initializeStuff();
 
   // Log free memory
   DEBUG_LOG_FREE_RAM();
 }
 
 // Function called to get the time from a NTP server
-unsigned long inline getNTPTime()
+unsigned long getNtpTime()
 {
   // Open a UDP socket
   DEBUG_LOG_LN(F("Opening UDP port ..."));
@@ -268,8 +277,152 @@ unsigned long inline getNTPTime()
   return time;
 }
 
+// Function called to initialize various global variables
+void initializeStuff()
+{
+  // Prepare needed variables
+  unsigned long time = now();
+  unsigned long midnight = previousMidnight(time);
+  byte day = dayOfWeek(time);
+
+  // Set the current color values
+  byte prevSchedule;
+  gCurrentColorValues = calcColorValues(time, day, false, prevSchedule);
+
+  // Load the previous schedule
+  MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule, 
+      schedule);
+
+  // Preapre the IR code array
+  FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
+      MOONLIGHT_CODE);
+
+  // Send the IR signal
+  IRsend irSend;
+  irSend.sendNEC(memoryIRCodes[schedule.button], 32);
+  delay(333);
+
+  // Loop through the memory schedules
+  for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
+  {
+    // Load the schedule
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+      schedule);
+
+    // Set the counter
+    gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
+        (calcMemoryScheduleCount(time, midnight, day, schedule) << (i % 2) * 4);
+  }
+
+  // Loop through the timer schedules
+  for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
+  {
+    // Load the schedule
+    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
+      schedule);
+
+    // Set the counter
+    gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
+        (calcTimerScheduleCount(time, midnight, day, schedule) << (i % 5) * 3);
+  }
+
+  // Set the time for clearing the schedule counters
+  gClearScheduleCountersTime = nextSunday(time);
+}
+
+// Function called to calculate what the current color values should be
+ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevSchedule)
+{
+  // Prepare needed variables
+  unsigned long prevScheduleStop = 0;
+  byte nextSchedule;
+  unsigned long nextScheduleStart = -1;
+
+  // Loop through the memory schedules
+  byte i;
+  for (i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
+  {
+    // Read the schedule
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+        schedule);
+    
+    // Check if this schedule is active and adjust the schedule's weekday
+    if (schedule.weekday == NEVER)
+      continue;
+    else if (schedule.weekday == EVERYDAY || (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY) ||
+        (schedule.weekday == SUN_AND_SAT && (day == SUNDAY || day == SATURDAY)))
+      schedule.weekday = day;
+
+    // Cacluate this schedule's start and stop times
+    unsigned long start = previousMidnight(time - (day - schedule.weekday) * SECS_PER_DAY) + schedule.timeSinceMidnight;
+    unsigned long stop = start + schedule.duration;
+
+    // Check if this schedule is currently running
+    if (time > start && time < stop)
+    {
+      prevSchedule = i;
+      break;
+    }
+    // Check if this schedule has already stopped and if it's the closest previous schedule
+    else if (time > stop && stop > prevScheduleStop)
+    {
+      prevSchedule = i;
+      prevScheduleStop = stop;
+    }
+    else if (time > stop - SECS_PER_WEEK && stop - SECS_PER_WEEK > prevScheduleStop)
+    {
+      prevSchedule = i;
+      prevScheduleStop = stop - SECS_PER_WEEK;
+    }
+    // Check if this schedule hasn't started yet and if it's the closest next schedule
+    else if (time < start && start < nextScheduleStart)
+    {
+      nextSchedule = i;
+      nextScheduleStart = start;
+    }
+    else if (time < start + SECS_PER_WEEK && start + SECS_PER_WEEK < nextScheduleStart)
+    {
+      nextSchedule = i;
+      nextScheduleStart = start + SECS_PER_WEEK;
+    }   
+  }
+
+  // Read the previous or current schedule's color values
+  ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
+      EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), 
+      prevValues);
+
+  // Check if we should take the fade into account and if we didn't loop through all the schedules which
+  //   means one of them is currently running
+  if (includeFade == false || i <= MEMORY_SCHEDULE_COUNT)
+  {
+    return prevValues;
+  }  
+  else
+  {
+    // Read the next schedule's color values
+    ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
+        EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule), nextValues);
+
+    // Loop through the colors
+    ColorValues calcValues;
+    for (byte i = 0; i < 4; ++i)
+    {
+      // Calculate what the color should be at this point in time
+      // Math: previous color value + seconds since previous schedule ended /
+      //       (seconds between schedules / difference in color between schedules) +
+      //       0.5 for rounding
+      ((byte*)&calcValues)[i] = (byte)((float)((byte *)&prevValues)[i] + (float)(time - prevScheduleStop) /
+          ((float)(nextScheduleStart - prevScheduleStop) / (float)(((byte *)&nextValues)[i] - ((byte *)&prevValues)[i])) +
+          (float)0.5);
+    }
+
+    return calcValues;
+  }
+}
+
 // Function called to calculate what the schedule count should be for the given memory schedule
-byte calcMemoryScheduleCount(byte day, unsigned long currentTime, MemorySchedule schedule)
+byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte day, MemorySchedule schedule)
 {
   // Calculate how many times this schedule should have run already this week
   byte count = 0;
@@ -285,17 +438,17 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, MemorySchedule
     }
     else if (day == schedule.weekday)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+      if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
         count = 2;
-      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      else if (time > midnight + schedule.timeSinceMidnight)
         count = 1;
     }
   }
   else if (schedule.weekday == EVERYDAY)
   {
-    if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+    if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
       count = day * 2;
-    else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+    else if (time > midnight + schedule.timeSinceMidnight)
       count = day * 2 - 1;
     else 
       count = (day - 1) * 2;
@@ -308,9 +461,9 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, MemorySchedule
     }
     else if (day >= MONDAY /* && day <= FRIDAY*/)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+      if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
         count = (day - 1) * 2;
-      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      else if (time > midnight + schedule.timeSinceMidnight)
         count = (day - 1) * 2 - 1;
       else 
         count = (day - 2) * 2;
@@ -320,9 +473,9 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, MemorySchedule
   {
     if (day == SATURDAY)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
+      if (time > midnight + schedule.timeSinceMidnight + schedule.duration) 
         count = 4;
-      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      else if (time > midnight + schedule.timeSinceMidnight)
         count = 3;
     }
     else if (day > SUNDAY)
@@ -331,9 +484,9 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, MemorySchedule
     }
     else // if (day == SUNDAY)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
+      if (time > midnight + schedule.timeSinceMidnight + schedule.duration) 
         count = 2;
-      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      else if (time > midnight + schedule.timeSinceMidnight)
         count = 1;
     }
   }
@@ -342,7 +495,7 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, MemorySchedule
 }
 
 // Function called to calculate what the schedule count should be for the given timer schedule
-byte calcMemoryScheduleCount(byte day, unsigned long currentTime, TimerSchedule schedule)
+byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day, TimerSchedule schedule)
 {
   // Calculate how many times this schedule should have run already this week
   byte count = 0;
@@ -358,13 +511,13 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, TimerSchedule 
     }
     else if (day == schedule.weekday)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      if (time > midnight + schedule.timeSinceMidnight)
         count = 1;
     }
   }
   else if (schedule.weekday == EVERYDAY)
   {
-    if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+    if (time > midnight + schedule.timeSinceMidnight)
       count = day;
     else
       count = day - 1;
@@ -377,7 +530,7 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, TimerSchedule 
     }
     else if (day >= MONDAY /* && day <= FRIDAY*/)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      if (time > midnight + schedule.timeSinceMidnight)
         count = day - 1;
       else 
         count = day - 2;
@@ -387,7 +540,7 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, TimerSchedule 
   {
     if (day == SATURDAY)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      if (time > midnight + schedule.timeSinceMidnight)
         count = 2;
       else 
         count = 1;
@@ -398,173 +551,12 @@ byte calcMemoryScheduleCount(byte day, unsigned long currentTime, TimerSchedule 
     }
     else // if (day == SUNDAY)
     {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      if (time > midnight + schedule.timeSinceMidnight)
         count = 1;
     }
   }
   
   return count;
-}
-
-// Function called to setup the schedule counters
-void setupScheduleCounters()
-{
-  // Prepare needed variables
-  unsigned long currentTime = now();
-  byte day = dayOfWeek(currentTime);
-
-  // Loop through the memory schedules
-  for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
-  {
-    // Load the schedule
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
-      schedule);
-
-    // Check if this schedule is active
-    if (schedule.weekday == NEVER)
-      continue;
-
-    // Calculate how many times this schedule should have run already this week
-    byte count = 0;
-    if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
-    {
-      if (day > schedule.weekday)
-      {
-        count = 2;
-      }
-      else if (day == schedule.weekday)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
-          count = 2;
-        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = 1;
-      }
-    }
-    else if (schedule.weekday == EVERYDAY)
-    {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
-        count = day * 2;
-      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-        count = day * 2 - 1;
-      else 
-        count = (day - 1) * 2;
-    }
-    else if (schedule.weekday == MON_TO_FRI)
-    {
-      if (day == SATURDAY)
-      {
-        count = 10;
-      }
-      else if (day >= MONDAY /* && day <= FRIDAY*/)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
-          count = (day - 1) * 2;
-        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = (day - 1) * 2 - 1;
-        else 
-          count = (day - 2) * 2;
-      }     
-    }
-    else if (schedule.weekday == SUN_AND_SAT)
-    {
-      if (day == SATURDAY)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
-          count = 4;
-        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = 3;
-      }
-      else if (day > SUNDAY)
-      {
-        count = 2;
-      }
-      else // if (day == SUNDAY)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
-          count = 2;
-        else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = 1;
-      }
-    }
-
-    // Adjust the counter
-    gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
-        (count << (i % 2) * 4);
-  }
-  
-  // Loop through the timer schedules
-  for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
-  {
-    // Load the schedule
-    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
-      schedule);
-
-      // Check if this schedule is active
-    if (schedule.weekday == NEVER)
-      continue;
-
-    // Calculate how many times this schedule should have run already this week
-    byte count = 0;
-    if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
-    {
-      if (day > schedule.weekday)
-      {
-        count = 1;
-      }
-      else if (day == schedule.weekday)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = 1;
-      }
-    }
-    else if (schedule.weekday == EVERYDAY)
-    {
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-        count = day;
-      else
-        count = day - 1;
-    }
-    else if (schedule.weekday == MON_TO_FRI)
-    {
-      if (day == SATURDAY)
-      {
-        count = 5;
-      }
-      else if (day >= MONDAY /* && day <= FRIDAY*/)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = day - 1;
-        else 
-          count = day - 2;
-      }
-    }
-    else if (schedule.weekday == SUN_AND_SAT)
-    {
-      if (day == SATURDAY)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = 2;
-        else 
-          count = 1;
-      }
-      else if (day > SUNDAY)
-      {
-        count = 1;
-      }
-      else // if (day == SUNDAY)
-      {
-        if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
-          count = 1;
-      }
-    }
-
-    // Adjust the counter
-    gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
-        (count << (i % 5) * 3);
-  } 
-
-  // Set the time for clearing the schedule counters
-  gClearScheduleCountersTime = nextSunday(currentTime);
 }
 
 // Function called to handle the index page
@@ -645,9 +637,8 @@ void inline processWebRequest()
   
     // Check what kind of request this is
     bool responseSent = false;
-    if (strcasecmp(string, "/get?t") == 0 || strcasecmp(string, "/get?ccv") == 0 || 
-        strcasecmp(string, "/get?cv") == 0 || strcasecmp(string, "/get?ms") == 0 || 
-        strcasecmp(string, "/get?ts") == 0)
+    if (strcasecmp(string, "/get?st") == 0 || strcasecmp(string, "/get?cv") == 0 || 
+        strcasecmp(string, "/get?ms") == 0 || strcasecmp(string, "/get?ts") == 0)
     {
       // Send the headers
       client.println(F("HTTP/1.1 200 OK"));
@@ -655,15 +646,11 @@ void inline processWebRequest()
       client.println(F("Connection: close\n"));
     
       // Figure out which data is being requested
-      if (strcasecmp(string, "/get?t") == 0) // t = time
+      if (strcasecmp(string, "/get?st") == 0) // st = status
       {
         // Send the data
         unsigned long currentTime = now();
         client.write((byte *)&currentTime, sizeof(unsigned long));
-      }
-      /* else */ if (strcasecmp(string, "/get?ccv") == 0) // ccv = current color values
-      {
-        // Send the data
         client.write((byte *)&gCurrentColorValues, sizeof(ColorValues));
       }
       /* else */ if (strcasecmp(string, "/get?cv") == 0) // cv = color values
@@ -701,6 +688,9 @@ void inline processWebRequest()
       {
         EEPROM.update(i, client.read());
       }
+
+      // Re-initalize stuff
+      initializeStuff();
     }
     else if (strcasecmp(string, "/save?ms") == 0) // ms = memory schedules
     {
@@ -710,8 +700,8 @@ void inline processWebRequest()
         EEPROM.update(i, client.read());
       }
 
-      // Re-setup the schedule counters
-      setupScheduleCounters();
+      // Re-initalize stuff
+      initializeStuff();
     }
     else if (strcasecmp(string, "/save?ts") == 0) // ts = timer schedules
     {
@@ -721,14 +711,14 @@ void inline processWebRequest()
         EEPROM.update(i, client.read());
       }
 
-      // Re-setup the schedule counters
-      setupScheduleCounters();
+      // Re-initalize stuff
+      initializeStuff();
     }
     else if (strcasecmp(string, "/reset") == 0)
     {
-      // Write zeros to all of the EEPROM
+      // Reset all EEPROM saved settings
       DEBUG_LOG_LN("Resetting EEPROM ...");
-      for (unsigned short i = 0; i < 1024; ++i)
+      for (unsigned short i = 0; i < TIMER_SCHEDULE_LOCATION_END; ++i)
       {
         if (EEPROM.read(i) != 0)
           EEPROM.write(i, 0);        
@@ -736,9 +726,8 @@ void inline processWebRequest()
     }
     else if (strcasecmp(string, "/reboot") == 0)
     {
-      // Do a soft restart
-      DEBUG_LOG_LN(F("Rebooting ..."));
-      asm volatile("jmp 0");
+      // Set the reboot flag
+      gReboot = true;
     }
     else 
     {
@@ -790,6 +779,13 @@ void inline processWebRequest()
 // Main code
 void loop()
 {
+  // Check the reboot flag
+  if (gReboot == true)
+  {
+    DEBUG_LOG_LN(F("Rebooting ..."));
+    asm volatile("jmp 0");
+  }
+
   // Check if the DHCP lease needs to be renewed
   #ifndef DEBUG
   Ethernet.maintain();
@@ -798,146 +794,40 @@ void loop()
   // Process any web requests
   processWebRequest();
 
-  // Prepare various variables
-  unsigned long currentTime = now();
-  byte prevSchedule;
-  unsigned long prevScheduleStop = 0;
-  byte nextSchedule;
-  unsigned long nextScheduleStart = -1;
-  
-  // Loop through the memory schedules
-  byte i;
-  for (i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
-  {
-    // Read the schedule entry
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
-        schedule);
-    
-    // Check if this schedule is active
-    if (schedule.weekday == NEVER)
-      continue;
-    
-    // Adjust the schedule's weekday
-    byte day = dayOfWeek(currentTime);
-    if (schedule.weekday == EVERYDAY || (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY) ||
-        (schedule.weekday == SUN_AND_SAT && (day == SUNDAY || day == SATURDAY)))
-      schedule.weekday = day;
+  // Prepare needed variables
+  unsigned long time = now();
+  unsigned long midnight = previousMidnight(time);
+  byte day = dayOfWeek(time);
 
-    // Cacluate this schedule's start and stop times
-    unsigned long start = previousMidnight(currentTime - (dayOfWeek(currentTime) - schedule.weekday) *
-        SECS_PER_DAY) + schedule.timeSinceMidnight;
-    unsigned long stop = start + schedule.duration;
-
-    // Check if this schedule is currently running
-    if (currentTime > start && currentTime < stop)
-    {
-      break;
-    }
-    // Check if this schedule has already stopped and if it's the closest previous schedule
-    else if (currentTime > stop && stop > prevScheduleStop)
-    {
-      prevSchedule = i;
-      prevScheduleStop = stop;
-    }
-    else if (currentTime > stop - SECS_PER_WEEK && stop - SECS_PER_WEEK > prevScheduleStop)
-    {
-      prevSchedule = i;
-      prevScheduleStop = stop - SECS_PER_WEEK;
-    }
-    // Check if this schedule hasn't started yet and if it's the closest next schedule
-    else if (currentTime < start && start < nextScheduleStart)
-    {
-      nextSchedule = i;
-      nextScheduleStart = start;
-    }
-    else if (currentTime < start + SECS_PER_WEEK && start + SECS_PER_WEEK < nextScheduleStart)
-    {
-      nextSchedule = i;
-      nextScheduleStart = start + SECS_PER_WEEK;
-    }   
-  }
-    
-  // Check if we looped through all the schedules which means none of them are currently running
-  if (i > MEMORY_SCHEDULE_COUNT)
-  {
-    // Read the previous and next schedule values
-    ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
-        EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), prevValues);
-    ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
-        EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule), nextValues);
-
-    // Prepare the IR code array
-    FLASH_ARRAY(unsigned long, irCodes, RED_UP_CODE, RED_DOWN_CODE, GREEN_UP_CODE, GREEN_DOWN_CODE, BLUE_UP_CODE,
-        BLUE_DOWN_CODE, WHITE_UP_CODE, WHITE_DOWN_CODE);
-
-    // Loop through the colors
-    for (byte i = 0; i < 4; ++i)
-    {
-      // Calculate what the color should be at this point in time
-      // Math: previous color value + seconds since previous schedule ended /
-      //       (seconds between schedules / difference in color between schedules) +
-      //       0.5 for rounding
-      byte calcValue = (byte)((float)((byte *)&prevValues)[i] + (float)(currentTime - prevScheduleStop) /
-          ((float)(nextScheduleStart - prevScheduleStop) / (float)(((byte *)&nextValues)[i] - ((byte *)&prevValues)[i])) +
-          (float)0.5);
-
-      // Check if we have to adjust the colors
-      if (calcValue < ((byte*)&gCurrentColorValues)[i])
-      {
-        // Send the IR code, wait, and adjust the current color value
-        IRsend irSend;
-        irSend.sendNEC(irCodes[i * 2], 32);
-        delay(333);
-        ++((byte*)&gCurrentColorValues)[i];
-      }
-      else if (calcValue > ((byte*)&gCurrentColorValues)[i])
-      {
-        // Send the IR code, wait, and adjust the current color value
-        IRsend irSend;
-        irSend.sendNEC(irCodes[i * 2 + 1], 32);
-        delay(333);
-        --((byte *)&gCurrentColorValues)[i];
-      }
-    }
-  }
-  
   // Check if it's time to clear the schedule counters
-  if (currentTime > gClearScheduleCountersTime)
+  if (time > gClearScheduleCountersTime)
   {
     // Clear the counters
     memset(&gMemoryScheduleCounters, 0, sizeof(byte) * MEMORY_SCHEDULE_COUNT / 2);
     memset(&gTimerScheduleCounters, 0, sizeof(unsigned short) * TIMER_SCHEDULE_COUNT / 5);
     
     // Set the new time for clearing the counters
-    gClearScheduleCountersTime = nextSunday(currentTime);
+    gClearScheduleCountersTime = nextSunday(time);
   }
 
-  // Preapre the IR code array
-  FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
-      MOONLIGHT_CODE);
-
-  // Loop through the memory schedules
-  for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
+  // Place this section in its own scope
   {
-    // Load the schedule
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
-      schedule);
+    // Preapre the IR code array
+    FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
+        MOONLIGHT_CODE);
 
-    // Check if this schedule is active
-    if (schedule.weekday == 0)
-      continue;
-  
-    // Load the counter for this shedule
-    byte counter = (gMemoryScheduleCounters[i / 2] >> (i % 2) * 4) & 0x0F;
-
-    // Check if this schedule should run today
-    byte day = dayOfWeek(currentTime);
-    if ((schedule.weekday == day && counter < 1) || (schedule.weekday == EVERYDAY && counter < day) ||
-        (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY && counter < day - 1) || 
-        (schedule.weekday == SUN_AND_SAT && ((day == SUNDAY && counter < 1) || (day == SATURDAY && counter < 2))))
+    // Loop through the memory schedules
+    for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
     {
+      // Load the schedule
+      MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+        schedule);
+
+      // Load the count for this shedule
+      byte count = (gMemoryScheduleCounters[i / 2] >> (i % 2) * 4) & 0x0F;
+
       // Check if it's time to run this schedule
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      if (count < calcMemoryScheduleCount(time, midnight, day, schedule))
       {
         // Send the IR signal
         IRsend irSend;
@@ -946,58 +836,33 @@ void loop()
      
         // Increment the counter
         gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
-            (++counter << (i % 2) * 4);
-      }
-    }
-    else if ((schedule.weekday == day && counter < 2) || (schedule.weekday == EVERYDAY && counter < day * 2) ||
-        (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY && counter < (day - 1) * 2) || 
-        (schedule.weekday == SUN_AND_SAT && ((day == SUNDAY && counter < 2) || (day == SATURDAY && counter < 4)))) 
-    {
-      // Check if it's time to run this schedule
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
-      {
-       // Send the IR signal
-        IRsend irSend;
-        irSend.sendNEC(memoryIRCodes[schedule.button], 32);
-        delay(333);
-        
-        // Increment the counter
-       gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
-           (++counter << (i % 2) * 4);
+            (++count << (i % 2) * 4);
       }
     }
   }
 
-  // Prepare the IR code array
-  FLASH_ARRAY(unsigned long, timerIRCodes, SET_CLOCK_CODE, ON_TIME_CODE, OFF_TIME_CODE,
-      POWER_CODE, HOUR_UP_CODE, MINUTE_DOWN_CODE, ENTER_CODE, RESUME_CODE, SUNLIGHT_CODE,
-      FULL_SPECTRUM_CODE, CRISP_BLUE_CODE, DEEP_WATER_CODE, RED_UP_CODE, GREEN_UP_CODE,
-      BLUE_UP_CODE, WHITE_UP_CODE, RED_DOWN_CODE, GREEN_DOWN_CODE, BLUE_DOWN_CODE,
-      WHITE_DOWN_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, MOONLIGHT_CODE, DYNAMIC_MOON_CODE,
-      DYNAMIC_LIGHTNING_CODE, DYNAMIC_CLOUD_CODE, DYNAMIC_FADE_CODE);
-
-  // Loop through the timer schedules
-  for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
+  // Place this section in its own scope
   {
-    // Load the schedule
-    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
-      schedule);
+    // Prepare the IR code array
+    FLASH_ARRAY(unsigned long, timerIRCodes, SET_CLOCK_CODE, ON_TIME_CODE, OFF_TIME_CODE,
+        POWER_CODE, HOUR_UP_CODE, MINUTE_DOWN_CODE, ENTER_CODE, RESUME_CODE, SUNLIGHT_CODE,
+        FULL_SPECTRUM_CODE, CRISP_BLUE_CODE, DEEP_WATER_CODE, RED_UP_CODE, GREEN_UP_CODE,
+        BLUE_UP_CODE, WHITE_UP_CODE, RED_DOWN_CODE, GREEN_DOWN_CODE, BLUE_DOWN_CODE,
+        WHITE_DOWN_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, MOONLIGHT_CODE, DYNAMIC_MOON_CODE,
+        DYNAMIC_LIGHTNING_CODE, DYNAMIC_CLOUD_CODE, DYNAMIC_FADE_CODE);
 
-    // Check if this schedule is active
-    if (schedule.weekday == 0)
-      continue;
-  
-    // Load the counter for this shedule
-    byte counter = (gTimerScheduleCounters[i / 5] >> (i % 5) * 3) & 0x0007;
-
-    // Check if this schedule should run today
-    byte day = dayOfWeek(currentTime);
-    if ((schedule.weekday == day && counter < 1) || (schedule.weekday == EVERYDAY && counter < day) ||
-        (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY && counter < day - 1) || 
-        (schedule.weekday == SUN_AND_SAT && ((day == SUNDAY && counter < 1) || (day == SATURDAY && counter < 2))))
+    // Loop through the timer schedules
+    for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
     {
+      // Load the schedule
+      TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
+        schedule);
+  
+      // Load the count for this shedule
+      byte count = (gTimerScheduleCounters[i / 5] >> (i % 5) * 3) & 0x0007;
+
       // Check if it's time to run this schedule
-      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      if (count < calcTimerScheduleCount(time, midnight, day, schedule))
       {
         // Send the IR signal
         IRsend irSend;
@@ -1006,8 +871,41 @@ void loop()
         
         // Increment the counter   
         gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
-            (++counter << (i % 5) * 3);
+            (++count << (i % 5) * 3);   
+      }  
+    }
+  }
+
+  // Place this section in its own scope
+  {
+    // Calculate the current color values
+    byte prevSchedule;
+    ColorValues calcValues = calcColorValues(time, day, true, prevSchedule);
+
+    // Prepare the IR code array
+    FLASH_ARRAY(unsigned long, irCodes, RED_UP_CODE, RED_DOWN_CODE, GREEN_UP_CODE, GREEN_DOWN_CODE, BLUE_UP_CODE,
+        BLUE_DOWN_CODE, WHITE_UP_CODE, WHITE_DOWN_CODE);
+
+    // Loop through the colors
+    for (byte i = 0; i < 4; ++i)
+    {
+      // Check if we have to adjust the colors
+      if (((byte *)&calcValues)[i] < ((byte *)&gCurrentColorValues)[i])
+      {
+        // Send the IR code, wait, and adjust the current color value
+        IRsend irSend;
+        irSend.sendNEC(irCodes[i * 2], 32);
+        delay(333);
+        ++((byte*)&gCurrentColorValues)[i];
       }
-    }  
+      else if (((byte *)&calcValues)[i] > ((byte*)&gCurrentColorValues)[i])
+      {
+        // Send the IR code, wait, and adjust the current color value
+        IRsend irSend;
+        irSend.sendNEC(irCodes[i * 2 + 1], 32);
+        delay(333);
+        --((byte *)&gCurrentColorValues)[i];
+      }
+    }
   }
 }
