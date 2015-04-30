@@ -268,6 +268,144 @@ unsigned long inline getNTPTime()
   return time;
 }
 
+// Function called to calculate what the schedule count should be for the given memory schedule
+byte calcMemoryScheduleCount(byte day, unsigned long currentTime, MemorySchedule schedule)
+{
+  // Calculate how many times this schedule should have run already this week
+  byte count = 0;
+  if (schedule.weekday == NEVER)
+  {
+    count = 0;
+  }
+  else if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
+  {
+    if (day > schedule.weekday)
+    {
+      count = 2;
+    }
+    else if (day == schedule.weekday)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+        count = 2;
+      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 1;
+    }
+  }
+  else if (schedule.weekday == EVERYDAY)
+  {
+    if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+      count = day * 2;
+    else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      count = day * 2 - 1;
+    else 
+      count = (day - 1) * 2;
+  }
+  else if (schedule.weekday == MON_TO_FRI)
+  {
+    if (day == SATURDAY)
+    {
+      count = 10;
+    }
+    else if (day >= MONDAY /* && day <= FRIDAY*/)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration)
+        count = (day - 1) * 2;
+      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = (day - 1) * 2 - 1;
+      else 
+        count = (day - 2) * 2;
+    }     
+  }
+  else if (schedule.weekday == SUN_AND_SAT)
+  {
+    if (day == SATURDAY)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
+        count = 4;
+      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 3;
+    }
+    else if (day > SUNDAY)
+    {
+      count = 2;
+    }
+    else // if (day == SUNDAY)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight + schedule.duration) 
+        count = 2;
+      else if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 1;
+    }
+  }
+  
+  return count;
+}
+
+// Function called to calculate what the schedule count should be for the given timer schedule
+byte calcMemoryScheduleCount(byte day, unsigned long currentTime, TimerSchedule schedule)
+{
+  // Calculate how many times this schedule should have run already this week
+  byte count = 0;
+  if (schedule.weekday == NEVER)
+  {
+    count = 0;
+  }
+  else if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
+  {
+    if (day > schedule.weekday)
+    {
+      count = 1;
+    }
+    else if (day == schedule.weekday)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 1;
+    }
+  }
+  else if (schedule.weekday == EVERYDAY)
+  {
+    if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+      count = day;
+    else
+      count = day - 1;
+  }
+  else if (schedule.weekday == MON_TO_FRI)
+  {
+    if (day == SATURDAY)
+    {
+      count = 5;
+    }
+    else if (day >= MONDAY /* && day <= FRIDAY*/)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = day - 1;
+      else 
+        count = day - 2;
+    }
+  }
+  else if (schedule.weekday == SUN_AND_SAT)
+  {
+    if (day == SATURDAY)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 2;
+      else 
+        count = 1;
+    }
+    else if (day > SUNDAY)
+    {
+      count = 1;
+    }
+    else // if (day == SUNDAY)
+    {
+      if (currentTime > previousMidnight(currentTime) + schedule.timeSinceMidnight)
+        count = 1;
+    }
+  }
+  
+  return count;
+}
+
 // Function called to setup the schedule counters
 void setupScheduleCounters()
 {
