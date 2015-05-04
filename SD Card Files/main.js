@@ -13,6 +13,7 @@ $.ajaxTransport("+*", function(options, originalOptions, jqXHR)
         // Add the load event listener
         xhr.addEventListener('load', function()
         {
+          // Call the callback method
           var response = {};
           response[options.dataType] = xhr.response;
           completeCallback(xhr.status, xhr.statusText, response, xhr.getAllResponseHeaders());
