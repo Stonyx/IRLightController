@@ -8,18 +8,25 @@
   -webkit-border-radius: 0px !important;
 }
 
+/* Limit the maximum width of the UI */
 .container
 {
   max-width: 600px;
 }
 
+/* Change the color of headings */
 h3
 {
   color: #337AB7;
 }
-
 h4
 {
   color: #337AB7;
   margin-bottom: 5px;
+}
+
+/* Add extra padding between buttons */
+.btn + .btn
+{
+  margin-top: 15px;
 }
