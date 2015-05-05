@@ -8,12 +8,6 @@
   -webkit-border-radius: 0px !important;
 }
 
-/* Limit the maximum width of the UI */
-.container
-{
-  max-width: 600px;
-}
-
 /* Change the color of headings */
 h3
 {
@@ -25,8 +19,16 @@ h4
   margin-bottom: 5px;
 }
 
-/* Add extra padding between buttons */
-.btn + .btn
+/* Add extra padding to buttons */
+.btn
 {
-  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+/* Add a line style */
+.line
+{
+  background-color: #337AB7;
+  height: 2px;
+  margin-bottom: 10px;
 }

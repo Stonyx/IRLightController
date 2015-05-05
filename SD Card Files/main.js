@@ -1,3 +1,8 @@
+// Define constants
+var COLOR_VALUES_COUNT = 5; // Power, Red, Green, Blue, and White
+var MEMORY_SCHEDULE_COUNT = 50; // Must be multiples of 2
+var TIMER_SCHEDULE_COUNT = 50; // Must be multiples of 5
+
 // Register an AJAX transport for receiving array buffer data
 $.ajaxTransport("+*", function(options, originalOptions, jqXHR)
 {

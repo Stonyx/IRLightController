@@ -84,10 +84,12 @@
 #define MON_TO_FRI 9
 #define SUN_AND_SAT 10
 
-// Define EEPROM locations
+// Define counts
 #define COLOR_VALUES_COUNT 5 // Power, Red, Green, Blue, and White
 #define MEMORY_SCHEDULE_COUNT 50 // Must be multiples of 2
 #define TIMER_SCHEDULE_COUNT 50 // Must be multiples of 5
+
+// Define EEPROM locations
 #define COLOR_VALUES_LOCATION_BEGIN 0
 #define COLOR_VALUES_LOCATION_END (COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * COLOR_VALUES_COUNT)
 #define MEMORY_SCHEDULE_LOCATION_BEGIN COLOR_VALUES_LOCATION_END
