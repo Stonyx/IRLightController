@@ -51,30 +51,30 @@
 #define URL_MAX_LENGTH 50
 
 // Define IR codes for Ecoxotic E-Series fixtures
-#define SET_CLOCK_CODE 0x20DF3AC5 // Satellite Plus Pro: - Satellite Plus: ORANGE_CODE
-#define ON_TIME_CODE 0x20DFBA45 // Satellite Plus Pro: - Satellite Plus: BLUE_CODE
-#define OFF_TIME_CODE 0x20DF827D // Satellite Plus Pro: - Satellite Plus: ROSE_CODE
-#define POWER_CODE 0x20DF02FD // Satelite Plus Pro: - Satellite Plus: POWER_CODE
-#define HOUR_UP_CODE 0x20DF1AE5 // Satellite Plus Pro: - Satellite Plus: WHITE_CODE
-#define MINUTE_DOWN_CODE 0x20DF9A65 // Satellite Plus Pro: - Satellite Plus: FULL_SPEC_CODE
-#define ENTER_CODE 0x20DFA25D // Satellite Plus Pro: - Satellite Plus: PURPLE_CODE
-#define RESUME_CODE 0x20DF22DD // Satellite Plus Pro: - Satellite Plus: PLAY_PAUSE_CODE
-#define SUNLIGHT_CODE 0x20DF2AD5 // Satellite Plus Pro: - Satellite Plus: RED_UP_CODE
-#define FULL_SPECTRUM_CODE 0x20DFAA55 // Satellite Plus Pro: - Satellite Plus: GREEN_UP_CODE
-#define CRISP_BLUE_CODE 0x20DF926D // Satellite Plus Pro: - Satellite Plus: BLUE_UP_CODE
-#define DEEP_WATER_CODE 0x20DF12ED // Satellite Plus Pro: - Satellite Plus: WHITE_UP_CODE
-#define RED_UP_CODE 0x20DF0AF5 // Satellite Plus Pro: - Satellite Plus: RED_DOWN_CODE
-#define GREEN_UP_CODE 0x20DF8A75 // Satellite Plus Pro: - Satellite Plus: GREEN_DOWN_CODE
-#define BLUE_UP_CODE 0x20DFB24D // Satellite Plus Pro: - Satellite Plus: BLUE_DOWN_CODE
-#define WHITE_UP_CODE 0x20DF32CD // Satellite Plus Pro: - Satellite Plus: WHITE_DOWN_CODE
-#define RED_DOWN_CODE 0x20DF38C7 // Satellite Plus Pro: - Satellite Plus: M1_CODE
-#define GREEN_DOWN_CODE 0x20DFB847 // Satellite Plus Pro: - Satellite Plus: M2_CODE
-#define BLUE_DOWN_CODE 0x20DF7887 // Satellite Plus Pro: - Satellite Plus: M3_CODE
-#define WHITE_DOWN_CODE 0x20DFF807 // Satellite Plus Pro: - Satellite Plus: M4_CODE
-#define M1_CODE 0x20DF18E7 // Satellite Plus Pro: - Satellite Plus: MOON_1_CODE
-#define M2_CODE 0x20DF9867 // Satellite Plus Pro: - Satellite Plus: MOON_2_CODE
-#define DAYLIGHT_CODE 0x20DF58A7 // Satellite Plus Pro: - Satellite Plus: MOON_3_CODE
-#define MOONLIGHT_CODE 0x20DFD827 // Satellite Plus Pro: - Satellite Plus: DAWN_DUSK_CODE
+#define SET_CLOCK_CODE 0x20DF3AC5 // Satellite Plus Pro: SET_CLOCK_CODE - Satellite Plus: ORANGE_CODE
+#define ON_TIME_CODE 0x20DFBA45 // Satellite Plus Pro: ON_TIME_CODE - Satellite Plus: BLUE_CODE
+#define OFF_TIME_CODE 0x20DF827D // Satellite Plus Pro: OFF_TIME_CODE - Satellite Plus: ROSE_CODE
+#define POWER_CODE 0x20DF02FD // Satelite Plus Pro: POWER_CODE - Satellite Plus: POWER_CODE
+#define HOUR_UP_CODE 0x20DF1AE5 // Satellite Plus Pro: HOUR_UP_CODE - Satellite Plus: WHITE_CODE
+#define MINUTE_DOWN_CODE 0x20DF9A65 // Satellite Plus Pro: MINUTE_DOWN_CODE - Satellite Plus: FULL_SPEC_CODE
+#define ENTER_CODE 0x20DFA25D // Satellite Plus Pro: ENTER_CODE - Satellite Plus: PURPLE_CODE
+#define RESUME_CODE 0x20DF22DD // Satellite Plus Pro: RESUME_CODE - Satellite Plus: PLAY_PAUSE_CODE
+#define SUNLIGHT_CODE 0x20DF2AD5 // Satellite Plus Pro: SUNLIGHT_CODE - Satellite Plus: RED_UP_CODE
+#define FULL_SPECTRUM_CODE 0x20DFAA55 // Satellite Plus Pro: FULL_SPECTRUM_CODE - Satellite Plus: GREEN_UP_CODE
+#define CRISP_BLUE_CODE 0x20DF926D // Satellite Plus Pro: CRISP_BLUE_CODE - Satellite Plus: BLUE_UP_CODE
+#define DEEP_WATER_CODE 0x20DF12ED // Satellite Plus Pro: DEEP_WATER_CODE - Satellite Plus: WHITE_UP_CODE
+#define RED_UP_CODE 0x20DF0AF5 // Satellite Plus Pro: RED_UP_CODE - Satellite Plus: RED_DOWN_CODE
+#define GREEN_UP_CODE 0x20DF8A75 // Satellite Plus Pro: GREEN_UP_CODE - Satellite Plus: GREEN_DOWN_CODE
+#define BLUE_UP_CODE 0x20DFB24D // Satellite Plus Pro: BLUE_UP_CODE - Satellite Plus: BLUE_DOWN_CODE
+#define WHITE_UP_CODE 0x20DF32CD // Satellite Plus Pro: WHITE_UP_CODE - Satellite Plus: WHITE_DOWN_CODE
+#define RED_DOWN_CODE 0x20DF38C7 // Satellite Plus Pro: RED_DOWN_CODE - Satellite Plus: M1_CODE
+#define GREEN_DOWN_CODE 0x20DFB847 // Satellite Plus Pro: GREEN_DOWN_CODE - Satellite Plus: M2_CODE
+#define BLUE_DOWN_CODE 0x20DF7887 // Satellite Plus Pro: BLUE_DOWN_CODE - Satellite Plus: M3_CODE
+#define WHITE_DOWN_CODE 0x20DFF807 // Satellite Plus Pro: WHITE_DOWN_CODE - Satellite Plus: M4_CODE
+#define M1_CODE 0x20DF18E7 // Satellite Plus Pro: M1_CODE - Satellite Plus: MOON_1_CODE
+#define M2_CODE 0x20DF9867 // Satellite Plus Pro: M2_CODE - Satellite Plus: MOON_2_CODE
+#define DAYLIGHT_CODE 0x20DF58A7 // Satellite Plus Pro: DAYLIGHT_CODE - Satellite Plus: MOON_3_CODE
+#define MOONLIGHT_CODE 0x20DFD827 // Satellite Plus Pro: MOONLIGHT_CODE - Satellite Plus: DAWN_DUSK_CODE
 #define DYNAMIC_MOON_CODE 0x20DF28D7 // Satellite Plus Pro: - Satellite Plus: CLOUD_1_CODE
 #define DYNAMIC_LIGHTNING_CODE 0x20DFA857 // Satellite Plus Pro: - Satellite Plus: CLOUD_2_CODE
 #define DYNAMIC_CLOUD_CODE 0x20DF6897 // Satellite Plus Pro: - Satellite Plus: CLOUD_3_CODE
@@ -120,16 +120,16 @@ struct ColorValues
 };
 struct MemorySchedule
 {
-  byte button : 5;
-  byte weekday : 4;
-  unsigned long timeSinceMidnight : 17;
-  unsigned long duration : 17;
+  byte button;
+  byte weekday;
+  unsigned long timeSinceMidnight;
+  unsigned long duration;
 };
 struct TimerSchedule
 {
-  byte button : 5;
-  byte weekday : 4;
-  unsigned long timeSinceMidnight : 17;
+  byte button;
+  byte weekday;
+  unsigned long timeSinceMidnight;
 };
 
 // Define global variables
@@ -858,7 +858,8 @@ void loop()
       FULL_SPECTRUM_CODE, CRISP_BLUE_CODE, DEEP_WATER_CODE, RED_UP_CODE, GREEN_UP_CODE,
       BLUE_UP_CODE, WHITE_UP_CODE, RED_DOWN_CODE, GREEN_DOWN_CODE, BLUE_DOWN_CODE,
       WHITE_DOWN_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, MOONLIGHT_CODE, DYNAMIC_MOON_CODE,
-      DYNAMIC_LIGHTNING_CODE, DYNAMIC_CLOUD_CODE, DYNAMIC_FADE_CODE);
+      DYNAMIC_LIGHTNING_CODE, DYNAMIC_CLOUD_CODE, DYNAMIC_FADE_CODE, EXTRA_1_CODE,
+      EXTRA_2_CODE, EXTRA_3_CODE, EXTRA_4_CODE);
 
   // Loop through the timer schedules
   for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
