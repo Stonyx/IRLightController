@@ -50,7 +50,7 @@ $(document).ready(function()
   $("button").on("click", function()
   {
     // Create the data array
-    var data new Uint8Array(SIZE_OF_MEMORY_SCHEDULE * MEMORY_SCHEDULE_COUNT);
+    var data = new Uint8Array(SIZE_OF_MEMORY_SCHEDULE * MEMORY_SCHEDULE_COUNT);
 
     // Loop through all the schedules
     for (var i = 1; i <= MEMORY_SCHEDULE_COUNT; ++i)
