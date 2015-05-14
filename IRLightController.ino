@@ -404,7 +404,7 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
 
   // Read the previous or current schedule's color values
   ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
-      EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), 
+      (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule) % 5), 
       prevValues);
 
   // Check if we should take the fade into account and if we didn't loop through all the schedules which
@@ -417,7 +417,8 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
   {
     // Read the next schedule's color values
     ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
-        EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule), nextValues);
+        (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule) % 5),
+        nextValues);
 
     // Loop through the colors
     ColorValues calcValues;
@@ -825,8 +826,9 @@ void loop()
   }
 
   // Preapre the IR code array
-  FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
-      MOONLIGHT_CODE);
+  FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, MOONLIGHT_CODE,
+      POWER_CODE, RED_DOWN_CODE /* Satellite Plus: M1_CODE */, GREEN_DOWN_CODE /* Satellite Plus: M2_CODE */,
+      BLUE_DOWN_CODE /* Satellite Plus: M3_CODE */, WHITE_DOWN_CODE /* Satellite Plus: M4_CODE */);
 
   // Loop through the memory schedules
   for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
