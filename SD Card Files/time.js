@@ -18,7 +18,7 @@ $(document).ready(function()
     // Clone the first schedule and change heading text and various IDs
     var schedule = $("#schedule-1").clone();
     schedule.attr("id", "schedule-" + i);
-    schedule.find("#heading-1").text("Timer Schedule #" + i);
+    schedule.find("#heading-1").html("<strong>Timer Schedule #" + i + "</strong>");
     schedule.find("#heading-1").attr("id", "heading-" + i);
     schedule.find("label[for='button-1']").attr("for", "button-" + i);
     schedule.find("#button-1").attr("id", "button-" + i);
