@@ -300,23 +300,6 @@ void initializeStuff()
   unsigned long midnight = previousMidnight(time);
   byte day = dayOfWeek(time);
 
-  // Set the current color values
-  byte prevSchedule;
-  gCurrentColorValues = calcColorValues(time, day, false, prevSchedule);
-
-  // Load the previous schedule
-  MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule, 
-      schedule);
-
-  // Preapre the IR code array
-  FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
-      MOONLIGHT_CODE);
-
-  // Send the IR signal
-  IRsend irSend;
-  irSend.sendNEC(memoryIRCodes[schedule.button], 32);
-  delay(333);
-
   // Loop through the memory schedules
   for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
   {
@@ -341,100 +324,25 @@ void initializeStuff()
         (calcTimerScheduleCount(time, midnight, day, schedule) << (i % 5) * 3);
   }
 
+  // Set the current color values
+  byte prevSchedule;
+  gCurrentColorValues = calcColorValues(time, day, false, prevSchedule);
+
+  // Load the previous schedule
+  MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule, 
+      schedule);
+
+  // Preapre the IR code array
+  FLASH_ARRAY(unsigned long, memoryIRCodes, POWER_CODE, M1_CODE, M2_CODE, DAYLIGHT_CODE, 
+      MOONLIGHT_CODE);
+
+  // Send the IR signal
+  IRsend irSend;
+  irSend.sendNEC(memoryIRCodes[schedule.button], 32);
+  delay(333);
+
   // Set the time for clearing the schedule counters
   gClearScheduleCountersTime = nextSunday(time);
-}
-
-// Function called to calculate what the current color values should be
-ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevSchedule)
-{
-  // Prepare needed variables
-  unsigned long prevScheduleStop = 0;
-  byte nextSchedule;
-  unsigned long nextScheduleStart = -1;
-
-  // Loop through the memory schedules
-  byte i;
-  for (i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
-  {
-    // Read the schedule
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
-        schedule);
-    
-    // Check if this schedule is active and adjust the schedule's weekday
-    if (schedule.weekday == NEVER)
-      continue;
-    else if (schedule.weekday == EVERYDAY || (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY) ||
-        (schedule.weekday == SUN_AND_SAT && (day == SUNDAY || day == SATURDAY)))
-      schedule.weekday = day;
-
-    // Cacluate this schedule's start and stop times
-    unsigned long start = previousMidnight(time - (day - schedule.weekday) * SECS_PER_DAY) + schedule.timeSinceMidnight;
-    unsigned long stop = start + schedule.duration;
-
-    // Check if this schedule is currently running
-    if (time > start && time < stop)
-    {
-      prevSchedule = i;
-      break;
-    }
-    // Check if this schedule has already stopped and if it's the closest previous schedule
-    else if (time > stop && stop > prevScheduleStop)
-    {
-      prevSchedule = i;
-      prevScheduleStop = stop;
-    }
-    else if (time > stop - SECS_PER_WEEK && stop - SECS_PER_WEEK > prevScheduleStop)
-    {
-      prevSchedule = i;
-      prevScheduleStop = stop - SECS_PER_WEEK;
-    }
-    // Check if this schedule hasn't started yet and if it's the closest next schedule
-    else if (time < start && start < nextScheduleStart)
-    {
-      nextSchedule = i;
-      nextScheduleStart = start;
-    }
-    else if (time < start + SECS_PER_WEEK && start + SECS_PER_WEEK < nextScheduleStart)
-    {
-      nextSchedule = i;
-      nextScheduleStart = start + SECS_PER_WEEK;
-    }   
-  }
-
-  // Read the previous or current schedule's color values
-  ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
-      (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule) % 5), 
-      prevValues);
-
-  // Check if we should take the fade into account and if we didn't loop through all the schedules which
-  //   means one of them is currently running
-  if (includeFade == false || i <= MEMORY_SCHEDULE_COUNT)
-  {
-    return prevValues;
-  }  
-  else
-  {
-    // Read the next schedule's color values
-    ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
-        (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule) % 5),
-        nextValues);
-
-    // Loop through the colors
-    ColorValues calcValues;
-    for (byte i = 0; i < 4; ++i)
-    {
-      // Calculate what the color should be at this point in time
-      // Math: previous color value + seconds since previous schedule ended /
-      //       (seconds between schedules / difference in color between schedules) +
-      //       0.5 for rounding
-      ((byte*)&calcValues)[i] = (byte)((float)((byte *)&prevValues)[i] + (float)(time - prevScheduleStop) /
-          ((float)(nextScheduleStart - prevScheduleStop) / (float)(((byte *)&nextValues)[i] - ((byte *)&prevValues)[i])) +
-          (float)0.5);
-    }
-
-    return calcValues;
-  }
 }
 
 // Function called to calculate what the schedule count should be for the given memory schedule
@@ -573,6 +481,98 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
   }
   
   return count;
+}
+
+// Function called to calculate what the current color values should be
+ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevSchedule)
+{
+  // Prepare needed variables
+  unsigned long prevScheduleStop = 0;
+  byte nextSchedule;
+  unsigned long nextScheduleStart = -1;
+
+  // Loop through the memory schedules
+  byte i;
+  for (i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
+  {
+    // Read the schedule
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+        schedule);
+    
+    // Check if this schedule is active and adjust the schedule's weekday
+    if (schedule.weekday == NEVER)
+      continue;
+    else if (schedule.weekday == EVERYDAY || (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY) ||
+        (schedule.weekday == SUN_AND_SAT && (day == SUNDAY || day == SATURDAY)))
+      schedule.weekday = day;
+
+    // Cacluate this schedule's start and stop times
+    unsigned long start = previousMidnight(time - (day - schedule.weekday) * SECS_PER_DAY) + schedule.timeSinceMidnight;
+    unsigned long stop = start + schedule.duration;
+
+    // Check if this schedule is currently running
+    if (time > start && time < stop)
+    {
+      prevSchedule = i;
+      break;
+    }
+    // Check if this schedule has already stopped and if it's the closest previous schedule
+    else if (time > stop && stop > prevScheduleStop)
+    {
+      prevSchedule = i;
+      prevScheduleStop = stop;
+    }
+    else if (time > stop - SECS_PER_WEEK && stop - SECS_PER_WEEK > prevScheduleStop)
+    {
+      prevSchedule = i;
+      prevScheduleStop = stop - SECS_PER_WEEK;
+    }
+    // Check if this schedule hasn't started yet and if it's the closest next schedule
+    else if (time < start && start < nextScheduleStart)
+    {
+      nextSchedule = i;
+      nextScheduleStart = start;
+    }
+    else if (time < start + SECS_PER_WEEK && start + SECS_PER_WEEK < nextScheduleStart)
+    {
+      nextSchedule = i;
+      nextScheduleStart = start + SECS_PER_WEEK;
+    }   
+  }
+
+  // Read the previous or current schedule's color values
+  ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
+      (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule) % 5), 
+      prevValues);
+
+  // Check if we should take the fade into account and if we didn't loop through all the schedules which
+  //   means one of them is currently running
+  if (includeFade == false || i <= MEMORY_SCHEDULE_COUNT)
+  {
+    return prevValues;
+  }  
+  else
+  {
+    // Read the next schedule's color values
+    ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
+        (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule) % 5),
+        nextValues);
+
+    // Loop through the colors
+    ColorValues calcValues;
+    for (byte i = 0; i < 4; ++i)
+    {
+      // Calculate what the color should be at this point in time
+      // Math: previous color value + seconds since previous schedule ended /
+      //       (seconds between schedules / difference in color between schedules) +
+      //       0.5 for rounding
+      ((byte*)&calcValues)[i] = (byte)((float)((byte *)&prevValues)[i] + (float)(time - prevScheduleStop) /
+          ((float)(nextScheduleStart - prevScheduleStop) / (float)(((byte *)&nextValues)[i] - ((byte *)&prevValues)[i])) +
+          (float)0.5);
+    }
+
+    return calcValues;
+  }
 }
 
 // Function called to handle the index page
