@@ -12,6 +12,7 @@
 // Run this when ready
 $(document).ready(function() 
 {
+  // Send the AJAX request
   $.ajax({
     url: "getst",
     type: "GET",

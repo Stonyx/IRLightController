@@ -1,0 +1,425 @@
+@charset "UTF-8";
+
+/* Container div properties */
+#ajax
+{
+  display: none;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+}
+
+/* Full page div properties */
+#ajax-screen
+{
+  background-color: #CCCCCC;
+  height: 100%;
+  opacity: 0.5;
+  position: fixed;
+  width: 100%;
+  z-index: 999;
+}
+
+/* Center div properties */
+#ajax-center
+{
+  height: 10em;
+  left: 50%;
+  margin-left: -5em;
+  margin-top: -5em;
+  position: fixed;
+  width: 10em;
+  top: 50%;
+  z-index: 1000;
+}
+
+/* Various ball properties */
+.ajax-ball-box
+{
+  animation: orbit 10s infinite;
+  -moz-animation: orbit 10s infinite;
+  -ms-animation: orbit 10s infinite;
+  -o-animation: orbit 10s infinite;
+  -webkit-animation: orbit 10s infinite;
+  height: 10em;
+  position: absolute;
+  opacity: 0;
+  width: 10em;
+  transform: rotate(225deg);
+  -moz-transform: rotate(225deg);
+  -ms-transform: rotate(225deg);
+  -o-transform: rotate(225deg);
+  -webkit-transform: rotate(225deg);
+}
+.ajax-ball
+{
+  background: #990033;
+  border-radius: 1em;
+  -moz-border-radius: 1em;
+  -ms-border-radius: 1em;
+  -o-border-radius: 1em;
+  -webkit-border-radius: 1em;
+  height: 1em;
+  left: 0px;
+  position: absolute;
+  top: 0px;
+  width: 1em;
+}
+#ajax-ball-1
+{
+  animation-delay: 2s;
+  -moz-animation-delay: 2s;
+  -ms-animation-delay: 2s;
+  -o-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+}
+#ajax-ball-2
+{
+  animation-delay: 0.4s;
+  -moz-animation-delay: 0.4s;
+  -ms-animation-delay: 0.4s;
+  -o-animation-delay: 0.4s;
+  -webkit-animation-delay: 0.4s;
+}
+#ajax-ball-3
+{
+  animation-delay: 0.8s;
+  -moz-animation-delay: 0.8s;
+  -ms-animation-delay: 0.8s;
+  -o-animation-delay: 0.8s;
+  -webkit-animation-delay: 0.8s;
+}
+#ajax-ball-4
+{
+  animation-delay: 1.2s;
+  -moz-animation-delay: 1.2s;
+  -ms-animation-delay: 1.2s;
+  -o-animation-delay: 1.2s;
+  -webkit-animation-delay: 1.2s;
+}
+#ajax-ball-5
+{
+  animation-delay: 1.6s;
+  -moz-animation-delay: 1.6s;
+  -ms-animation-delay: 1.6s;
+  -o-animation-delay: 1.6s;
+  -webkit-animation-delay: 1.6s;
+}
+
+/* Key frame information for the orbiting balls animation */
+@keyframes orbit
+{
+  0%
+  {
+    animation-timing-function: ease-out;
+    opacity: 1;
+    transform: rotate(180deg);
+    z-index: 99;
+  }
+
+  7%
+  {
+    animation-timing-function: linear;
+    opacity: 1;
+    origin: 0%;
+    transform: rotate(300deg);
+  }
+
+  30%
+  {
+    animation-timing-function: ease-in-out;
+    opacity: 1;
+    origin: 7%;
+    transform: rotate(410deg);
+  }
+
+  39%
+  {
+    animation-timing-function: linear;
+    opacity: 1;
+    origin: 30%;
+    transform: rotate(645deg);
+  }
+
+  70%
+  {
+    animation-timing-function: ease-out;
+    opacity: 1;
+    origin: 39%;
+    transform: rotate(770deg);
+  }
+
+  75%
+  {
+    animation-timing-function: ease-out;
+    opacity: 1;
+    origin: 70%;
+    transform: rotate(900deg);
+  }
+
+  76%
+  {
+    opacity: 0;
+    transform: rotate(900deg);
+  }
+
+  100%
+  {
+    opacity: 0;
+    transform: rotate(900deg);
+  }
+}
+
+@-moz-keyframes orbit
+{
+  0%
+  {
+    -moz-animation-timing-function: ease-out;
+    opacity: 1;
+    -moz-transform: rotate(180deg);
+    z-index: 99;
+  }
+
+  7%
+  {
+    -moz-animation-timing-function: linear;
+    opacity: 1;
+    -moz-origin: 0%;
+    -moz-transform: rotate(300deg);
+  }
+
+  30%
+  {
+    -moz-animation-timing-function: ease-in-out;
+    opacity: 1;
+    -moz-origin: 7%;
+    -moz-transform: rotate(410deg);
+  }
+
+  39%
+  {
+    -moz-animation-timing-function: linear;
+    opacity: 1;
+    -moz-origin: 30%;
+    -moz-transform: rotate(645deg);
+  }
+
+  70%
+  {
+    -moz-animation-timing-function: ease-out;
+    opacity: 1;
+    -moz-origin: 39%;
+    -moz-transform: rotate(770deg);
+  }
+
+  75%
+  {
+    -moz-animation-timing-function: ease-out;
+    opacity: 1;
+    -moz-origin: 70%;
+    -moz-transform: rotate(900deg);
+  }
+
+  76%
+  {
+    opacity: 0;
+    -moz-transform: rotate(900deg);
+  }
+
+  100%
+  {
+    opacity: 0;
+    -moz-transform: rotate(900deg);
+  }
+}
+
+@-ms-keyframes orbit
+{
+  0%
+  {
+    -ms-animation-timing-function: ease-out;
+    opacity: 1;
+    -ms-transform: rotate(180deg);
+    z-index: 99;
+  }
+
+  7%
+  {
+    -ms-animation-timing-function: linear;
+    opacity: 1;
+    -ms-origin: 0%;
+    -ms-transform: rotate(300deg);
+  }
+
+  30%
+  {
+    -ms-animation-timing-function: ease-in-out;
+    opacity: 1;
+    -ms-origin: 7%;
+    -ms-transform: rotate(410deg);
+  }
+
+  39%
+  {
+    -ms-animation-timing-function: linear;
+    opacity: 1;
+    -ms-origin: 30%;
+    -ms-transform: rotate(645deg);
+  }
+
+  70%
+  {
+    -ms-animation-timing-function: ease-out;
+    opacity: 1;
+    -ms-origin: 39%;
+    -ms-transform: rotate(770deg);
+  }
+
+  75%
+  {
+    -ms-animation-timing-function: ease-out;
+    opacity: 1;
+    -ms-origin: 70%;
+    -ms-transform: rotate(900deg);
+  }
+
+  76%
+  {
+    opacity: 0;
+    -ms-transform: rotate(900deg);
+  }
+
+  100%
+  {
+    opacity: 0;
+    -ms-transform: rotate(900deg);
+  }
+}
+
+@-o-keyframes orbit
+{
+  0%
+  {
+    -o-animation-timing-function: ease-out;
+    opacity: 1;
+    -o-transform: rotate(180deg);
+    z-index: 99;
+  }
+
+  7%
+  {
+    -o-animation-timing-function: linear;
+    opacity: 1;
+    -o-origin: 0%;
+    -o-transform: rotate(300deg);
+  }
+
+  30%
+  {
+    -o-animation-timing-function: ease-in-out;
+    opacity: 1;
+    -o-origin: 7%;
+    -o-transform: rotate(410deg);
+  }
+
+  39%
+  {
+    -o-animation-timing-function: linear;
+    opacity: 1;
+    -o-origin: 30%;
+    -o-transform: rotate(645deg);
+  }
+
+  70%
+  {
+    -o-animation-timing-function: ease-out;
+    opacity: 1;
+    -o-origin: 39%;
+    -o-transform: rotate(770deg);
+  }
+
+  75%
+  {
+    -o-animation-timing-function: ease-out;
+    opacity: 1;
+    -o-origin: 70%;
+    -o-transform: rotate(900deg);
+  }
+
+  76%
+  {
+    opacity: 0;
+    -o-transform: rotate(900deg);
+  }
+
+  100%
+  {
+    opacity: 0;
+    -o-transform: rotate(900deg);
+  }
+}
+
+@-webkit-keyframes orbit
+{
+  0%
+  {
+    -webkit-animation-timing-function: ease-out;
+    opacity: 1;
+    -webkit-transform: rotate(180deg);
+    z-index: 99;
+  }
+
+  7%
+  {
+    -webkit-animation-timing-function: linear;
+    opacity: 1;
+    -webkit-origin: 0%;
+    -webkit-transform: rotate(300deg);
+  }
+
+  30%
+  {
+    -webkit-animation-timing-function: ease-in-out;
+    opacity: 1;
+    -webkit-origin: 7%;
+    -webkit-transform: rotate(410deg);
+  }
+
+  39%
+  {
+    -webkit-animation-timing-function: linear;
+    opacity: 1;
+    -webkit-origin: 30%;
+    -webkit-transform: rotate(645deg);
+  }
+
+  70%
+  {
+    -webkit-animation-timing-function: ease-out;
+    opacity: 1;
+    -webkit-origin: 39%;
+    -webkit-transform: rotate(770deg);
+  }
+
+  75%
+  {
+    -webkit-animation-timing-function: ease-out;
+    opacity: 1;
+    -webkit-origin: 70%;
+    -webkit-transform: rotate(900deg);
+  }
+
+  76%
+  {
+    opacity: 0;
+    -webkit-transform: rotate(900deg);
+  }
+
+  100%
+  {
+    opacity: 0;
+    -webkit-transform: rotate(900deg);
+  }
+}

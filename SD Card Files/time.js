@@ -43,6 +43,9 @@ $(document).ready(function()
   // Attach to the button
   $("button").on("click", function()
   {
+    // Show the AJAX animation
+    $("#ajax").show();
+
     // Create the data array
     var data = new Uint8Array(SIZE_OF_TIMER_SCHEDULE * TIMER_SCHEDULE_COUNT);
 
@@ -79,7 +82,8 @@ $(document).ready(function()
       data: data
     }).done(function(data, textStatus, jqXHR)
     {
-      // Redirect to the index page
+      // Hide the AJAX animation and redirect to the index page
+      $("#ajax").hide();
       window.location.href = 'index.htm';
     });
   });
