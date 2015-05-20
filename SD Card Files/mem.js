@@ -46,6 +46,59 @@ $(document).ready(function()
     schedule.appendTo("#schedules");
   }
 
+  // Show the AJAX animation
+  $("#ajax").show();
+
+  // Send the AJAX request
+  $.ajax({
+    url: "getms",
+    type: "GET",
+    dataType: "arraybuffer",
+    processData: "false",
+  }).done(function(data, textStatus, jqXHR)
+  {
+    // Convert the data to a unsigned byte array
+    data = new Uint8Array(data);
+
+    // Loop through all the schedules
+    for (var i = 1; i <= MEMORY_SCHEDULE_COUNT; ++i)
+    {
+      // Get the schedule data from the array
+      var baseLocation = SIZE_OF_MEMORY_SCHEDULE * (i - 1)
+      var button = data[baseLocation];
+      var weekday = data[baseLocation + 1];
+      var timeSinceMidnight = 0x00000000;
+      for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
+      {
+        timeSinceMidnight = timeSinceMidnight | (data[j] << (8 * (j - (baseLocation + 2))));
+      }
+      startHour = timeSinceMidnight / 3600 /* 60 * 60 */ | 0x00000000;
+      startMinute = (timeSinceMidnight - startHour * 3600 /* 60 * 60 */) / 60 | 0x00000000;
+      startSecond = timeSinceMidnight - startHour * 3600 /* 60 * 60 */ - startMinute * 60
+      var duration = 0x00000000;
+      for (var j = baseLocation + 6; j < baseLocation + 10; ++j)
+      {
+        duration = duration | (data[j] << (8 * (j - (baseLocation + 6))));
+      }
+      stopHour = 0;
+      stopMinute = 0;
+      stopSecond = 0;
+
+      // Set the fields
+      $("#button-" + i).val(button);
+      $("#weekday-" + i).val(weekday);
+      $("#start-hour-" + i).val(startHour);
+      $("#start-minute-" + i).val(startMinute);
+      $("#start-second-" + i).val(startSecond);
+      $("#stop-hour-" + i).val(stopHour);
+      $("#stop-minute-" + i).val(stopMinute);
+      $("#stop-second-" + i).val(stopSecond);
+    }
+
+    // Hide the AJAX animation
+    $("#ajax").hide();
+  });
+
   // Attach to the button
   $("button").on("click", function()
   {
@@ -59,14 +112,14 @@ $(document).ready(function()
     for (var i = 1; i <= MEMORY_SCHEDULE_COUNT; ++i)
     {
       // Get the data for this schedule
-      var button = $("#button-" + i).val();
-      var weekday = $("#weekday-" + i).val();
-      var startHour = $("#start-hour-" + i).val();
-      var startMinute = $("#start-minute-" + i).val();
-      var startSecond = $("#start-second-" + i).val();
-      var stopHour = $("#stop-hour-" + i).val();
-      var stopMinute = $("#stop-minute-" + i).val();
-      var stopSecond = $("#stop-second-" + i).val();
+      var button = parseInt($("#button-" + i).val());
+      var weekday = parseInt($("#weekday-" + i).val());
+      var startHour = parseInt($("#start-hour-" + i).val());
+      var startMinute = parseInt($("#start-minute-" + i).val());
+      var startSecond = parseInt($("#start-second-" + i).val());
+      var stopHour = parseInt($("#stop-hour-" + i).val());
+      var stopMinute = parseInt($("#stop-minute-" + i).val());
+      var stopSecond = parseInt($("#stop-second-" + i).val());
 
       // Calculate the time since midnight and duration
       var timeSinceMidnight = startHour * 3600 /* 60 * 60 */ + startMinute * 60 + startSecond;
@@ -82,13 +135,11 @@ $(document).ready(function()
       data[baseLocation + 1] = weekday;
       for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
       {
-        data[j] = timeSinceMidnight & 0x000000FF;
-        timeSinceMidnight = timeSinceMidnight << 8;
+        data[j] = (timeSinceMidnight >> (8 * (j - (baseLocation + 2)))) & 0x000000FF;
       }
       for (var j = baseLocation + 6; j < baseLocation + 10; ++j)
       {
-        data[j] = duration & 0x000000FF;
-        duration = duration << 8;
+        data[j] = (duration >> (8 * (j - (baseLocation + 6)))) & 0x000000FF;
       }
     }
 

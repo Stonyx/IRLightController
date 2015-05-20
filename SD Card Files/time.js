@@ -53,11 +53,11 @@ $(document).ready(function()
     for (var i = 1; i <= TIMER_SCHEDULE_COUNT; ++i)
     {
       // Get the data for this schedule
-      var button = $("#button-" + i).val();
-      var weekday = $("#weekday-" + i).val();
-      var startHour = $("#hour-" + i).val();
-      var startMinute = $("#minute-" + i).val();
-      var startSecond = $("#second-" + i).val();
+      var button = parseInt($("#button-" + i).val());
+      var weekday = parseInt($("#weekday-" + i).val());
+      var startHour = parseInt($("#hour-" + i).val());
+      var startMinute = parseInt($("#minute-" + i).val());
+      var startSecond = parseInt($("#second-" + i).val());
 
       // Calculate the time since midnight and duration
       var timeSinceMidnight = startHour * 3600 /* 60 * 60 */ + startMinute * 60 + startSecond;
@@ -69,7 +69,7 @@ $(document).ready(function()
       for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
       {
         data[j] = timeSinceMidnight & 0x000000FF;
-        timeSinceMidnight = timeSinceMidnight << 8;
+        timeSinceMidnight = timeSinceMidnight >> 8;
       }
     }
 
