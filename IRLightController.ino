@@ -98,7 +98,7 @@
 #define SUN_AND_SAT 10
 
 // Define counts
-#define COLOR_VALUES_COUNT 5 // Power, Red, Green, Blue, and White
+#define COLOR_VALUES_COUNT 5 // Power, M1, M2, Daylight, and Moonlight
 #define MEMORY_SCHEDULE_COUNT 50 // Must be multiples of 2
 #define TIMER_SCHEDULE_COUNT 50 // Must be multiples of 5
 

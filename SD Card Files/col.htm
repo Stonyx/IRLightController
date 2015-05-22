@@ -9,12 +9,189 @@
 </head>
 
 <body>
+<div id="ajax">
+  <div id="ajax-screen"></div>
+
+  <div id="ajax-center">
+    <div id="ajax-ball-1" class="ajax-ball-box">
+      <div class="ajax-ball"></div>
+    </div>
+
+    <div id="ajax-loader-ball-2" class="ajax-ball-box">
+      <div class="ajax-loader-ball"></div>
+    </div>
+
+    <div id="ajax-ball-3" class="ajax-ball-box">
+      <div class="ajax-ball"></div>
+    </div>
+
+    <div id="ajax-ball-4" class="ajax-ball-box">
+      <div class="ajax-ball"></div>
+    </div>
+
+    <div id="ajax-ball-5" class="ajax-ball-box">
+      <div class="ajax-ball"></div>
+    </div>
+  </div>
+</div>
+
 <div class="container">
   <div class="row">
     <div class="col-xs-12">
-      <h3 class="text-center"><strong>IR Light Controller</strong></h3>
+      <h3 class="text-center"><strong>IR Light Controller<br>Color Values</strong></h3>
+    </div>
 
+    <div id="values-1">
+      <div class="col-xs-12">
+        <strong>Power Off / Power Off / Power Off</strong>
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-danger" for="red-1">Red</label>
+        <input id="red-1" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-success" for="green-1">Green</label>
+        <input id="red-1" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-info" for="blue-1">Blue</label>
+        <input id="red-1" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label for="white-1">White</label>
+        <input id="white-1" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-12">
+        <div class="line"></div>
+      </div>
+    </div>
+
+    <div id="values-2">
+      <div class="col-xs-12">
+        <strong>Memory 1 / Memory 1 / Memory 1</strong>
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-danger" for="red-2">Red</label>
+        <input id="red-2" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-success" for="green-2">Green</label>
+        <input id="green-2" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-info" for="blue-2">Blue</label>
+        <input id="blue-2" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label for="white-2">White</label>
+        <input id="white-2" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-12">
+        <div class="line"></div>
+      </div>
+    </div>
+
+    <div id="values-3">
+      <div class="col-xs-12">
+        <strong>Memory 2 / Memory 2 / Memory 2</strong>
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-danger" for="red-3">Red</label>
+        <input id="red-3" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-success" for="green-3">Green</label>
+        <input id="green-3" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-info" for="blue-3">Blue</label>
+        <input id="blue-3" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label for="white-3">White</label>
+        <input id="white-3" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-12">
+        <div class="line"></div>
+      </div>
+    </div>
+
+    <div id="values-1">
+      <div class="col-xs-12">
+        <strong>Daylight / Daylight / Memory 3</strong>
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-danger" for="red-4">Red</label>
+        <input id="red-4" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-success" for="green-4">Green</label>
+        <input id="green-4" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-info" for="blue-4">Blue</label>
+        <input id="blue-4" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label for="white-4">White</label>
+        <input id="white-4" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-12">
+        <div class="line"></div>
+      </div>
+    </div>
+
+    <div id="values-1">
+      <div class="col-xs-12">
+        <strong>Moonlight / Moonlight / Memory 4</strong>
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-danger" for="red-5">Red</label>
+        <input id="red-5" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-success" for="green-5">Green</label>
+        <input id="green-5" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label class="text-info" for="blue-5">Blue</label>
+        <input id="blue-5" class="form-control" type="number" min="0" max="255">
+      </div>
+
+      <div class="col-xs-6 col-sm-3 form-group">
+        <label for="white-5">White</label>
+        <input id="white-5" class="form-control" type="number" min="0" max="255">
+      </div>
+    </div>
+
+    <div class="col-xs-12 col-sm-6">
       <button class="btn btn-success btn-block">Save</button>
+    </div>
+
+    <div class="col-xs-12 col-sm-6">
       <a class="btn btn-danger btn-block" href="index.htm">Cancel</a>
     </div>
   </div>
