@@ -67,22 +67,27 @@ $(document).ready(function()
       var baseLocation = SIZE_OF_MEMORY_SCHEDULE * (i - 1)
       var button = data[baseLocation];
       var weekday = data[baseLocation + 1];
-      var timeSinceMidnight = 0x00000000;
+      var startTime = 0x00000000;
       for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
       {
-        timeSinceMidnight = timeSinceMidnight | (data[j] << (8 * (j - (baseLocation + 2))));
+        startTime = startTime | (data[j] << (8 * (j - (baseLocation + 2))));
       }
-      startHour = timeSinceMidnight / 3600 /* 60 * 60 */ | 0x00000000;
-      startMinute = (timeSinceMidnight - startHour * 3600 /* 60 * 60 */) / 60 | 0x00000000;
-      startSecond = timeSinceMidnight - startHour * 3600 /* 60 * 60 */ - startMinute * 60
       var duration = 0x00000000;
       for (var j = baseLocation + 6; j < baseLocation + 10; ++j)
       {
         duration = duration | (data[j] << (8 * (j - (baseLocation + 6))));
       }
-      stopHour = 0;
-      stopMinute = 0;
-      stopSecond = 0;
+
+      // Calculate the start and stop times
+      var startHour = startTime / 3600 /* 60 * 60 */ | 0x00000000;
+      var startMinute = (startTime - startHour * 3600 /* 60 * 60 */) / 60 | 0x00000000;
+      var startSecond = startTime - startHour * 3600 /* 60 * 60 */ - startMinute * 60;
+      var stopTime = startTime + duration;
+      if (stopTime > 86400 /* 24 * 60 * 60 */)
+        stopTime = stopTime - 86400;
+      stopHour = stopTime / 3600 /* 60 * 60 */ | 0x00000000;
+      stopMinute = (stopTime - stopHour * 3600 /* 60 * 60 */) / 60 | 0x00000000;
+      stopSecond = stopTime - stopHour * 3600 /* 60 * 60 */ - stopMinute * 60;
 
       // Set the fields
       $("#button-" + i).val(button);
@@ -122,12 +127,11 @@ $(document).ready(function()
       var stopSecond = parseInt($("#stop-second-" + i).val());
 
       // Calculate the time since midnight and duration
-      var timeSinceMidnight = startHour * 3600 /* 60 * 60 */ + startMinute * 60 + startSecond;
-      var duration = stopHour * 3600 /* 60 * 60 */ + stopMinute * 60 + stopSecond;
-      if (duration > timeSinceMidnight)
-        duration = duration - timeSinceMidnight;
-      else
-        duration = 86400 /* 24 * 60 * 60 */ - timeSinceMidnight + duration;
+      var startTime = startHour * 3600 /* 60 * 60 */ + startMinute * 60 + startSecond;
+      var stopTime = stopHour * 3600 /* 60 * 60 */ + stopMinute * 60 + stopSecond;
+      var duration = stopTime - startTime;
+      if (duration < 0)
+        duration = duration + 86400 /* 24 * 60 * 60 */;
 
       // Add the data to the array
       var baseLocation = SIZE_OF_MEMORY_SCHEDULE * (i - 1);
@@ -135,7 +139,7 @@ $(document).ready(function()
       data[baseLocation + 1] = weekday;
       for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
       {
-        data[j] = (timeSinceMidnight >> (8 * (j - (baseLocation + 2)))) & 0x000000FF;
+        data[j] = (startTime >> (8 * (j - (baseLocation + 2)))) & 0x000000FF;
       }
       for (var j = baseLocation + 6; j < baseLocation + 10; ++j)
       {

@@ -40,6 +40,50 @@ $(document).ready(function()
     schedule.appendTo("#schedules");
   }
 
+  // Show the AJAX animation
+  $("#ajax").show();
+
+  // Send the AJAX request
+  $.ajax({
+    url: "getms",
+    type: "GET",
+    dataType: "arraybuffer",
+    processData: "false",
+  }).done(function(data, textStatus, jqXHR)
+  {
+    // Convert the data to a unsigned byte array
+    data = new Uint8Array(data);
+
+    // Loop through all the schedules
+    for (var i = 1; i <= MEMORY_SCHEDULE_COUNT; ++i)
+    {
+      // Get the schedule data from the array
+      var baseLocation = SIZE_OF_MEMORY_SCHEDULE * (i - 1)
+      var button = data[baseLocation];
+      var weekday = data[baseLocation + 1];
+      var startTime = 0x00000000;
+      for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
+      {
+        startTime = startTime | (data[j] << (8 * (j - (baseLocation + 2))));
+      }     
+
+      // Calculate the start times
+      var startHour = startTime / 3600 /* 60 * 60 */ | 0x00000000;
+      var startMinute = (startTime - startHour * 3600 /* 60 * 60 */) / 60 | 0x00000000;
+      var startSecond = startTime - startHour * 3600 /* 60 * 60 */ - startMinute * 60;
+
+      // Set the fields
+      $("#button-" + i).val(button);
+      $("#weekday-" + i).val(weekday);
+      $("#start-hour-" + i).val(startHour);
+      $("#start-minute-" + i).val(startMinute);
+      $("#start-second-" + i).val(startSecond);
+    }
+
+    // Hide the AJAX animation
+    $("#ajax").hide();
+  });
+
   // Attach to the button
   $("button").on("click", function()
   {
@@ -59,8 +103,8 @@ $(document).ready(function()
       var startMinute = parseInt($("#minute-" + i).val());
       var startSecond = parseInt($("#second-" + i).val());
 
-      // Calculate the time since midnight and duration
-      var timeSinceMidnight = startHour * 3600 /* 60 * 60 */ + startMinute * 60 + startSecond;
+      // Calculate the start time and duration
+      var startTime = startHour * 3600 /* 60 * 60 */ + startMinute * 60 + startSecond;
 
       // Add the data to the array
       var baseLocation = SIZE_OF_TIMER_SCHEDULE * (i - 1);
@@ -68,8 +112,7 @@ $(document).ready(function()
       data[baseLocation + 1] = weekday;
       for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
       {
-        data[j] = timeSinceMidnight & 0x000000FF;
-        timeSinceMidnight = timeSinceMidnight >> 8;
+        data[j] = (startTime >> (8 * (j - (baseLocation + 2)))) & 0x000000FF;
       }
     }
 

@@ -9,13 +9,8 @@
 }
 
 /* Change the color of headings */
-h3
-{
-  color: #337AB7;
-}
 h4
 {
-  color: #337AB7;
   margin-bottom: 5px;
 }
 
@@ -28,7 +23,7 @@ h4
 /* Add a line style */
 .line
 {
-  background-color: #337AB7;
+  background-color: #333333;
   height: 2px;
   margin-bottom: 10px;
 }
