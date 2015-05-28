@@ -12,6 +12,9 @@
 // Run this when ready
 $(document).ready(function() 
 {
+  // Show the AJAX animation
+  $("#ajax").show();
+
   // Copy the schedule HTML
   for (var i = 2; i <= MEMORY_SCHEDULE_COUNT; ++i)
   { 
@@ -45,9 +48,6 @@ $(document).ready(function()
     // Add the schedule
     schedule.appendTo("#schedules");
   }
-
-  // Show the AJAX animation
-  $("#ajax").show();
 
   // Send the AJAX request
   $.ajax({
@@ -149,7 +149,7 @@ $(document).ready(function()
 
     // Send the data
     $.ajax({
-      url: "savems",
+      url: "setms",
       type: "GET",
       dataType: "arraybuffer",
       processData: "false",

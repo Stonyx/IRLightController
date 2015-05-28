@@ -697,7 +697,7 @@ void inline processWebRequest()
       // Set the response sent flag
       responseSent = true; 
     }
-    else if (strcasecmp(string, "/save?cv") == 0) // cv = color values
+    else if (strcasecmp(string, "/set?cv") == 0) // cv = color values
     {
       // Save the data
       for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
@@ -708,7 +708,7 @@ void inline processWebRequest()
       // Re-initalize stuff
       initializeStuff();
     }
-    else if (strcasecmp(string, "/save?ms") == 0) // ms = memory schedules
+    else if (strcasecmp(string, "/set?ms") == 0) // ms = memory schedules
     {
       // Save the data
       for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
@@ -719,7 +719,7 @@ void inline processWebRequest()
       // Re-initalize stuff
       initializeStuff();
     }
-    else if (strcasecmp(string, "/save?ts") == 0) // ts = timer schedules
+    else if (strcasecmp(string, "/set?ts") == 0) // ts = timer schedules
     {
       // Save the data
       for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
