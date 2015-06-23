@@ -50,103 +50,106 @@
 #define DST_END_HOUR 2
 #define URL_MAX_LENGTH 50
 
+// Define IR code prefix
+#define CODE_PREFIX 0x20DF
+
 // Define IR codes for the Ecoxotic E-Series fixtures
-#define ECO_SET_CLOCK_CODE 0x20DF3AC5
-#define ECO_ON_TIME_CODE 0x20DFBA45
-#define ECO_OFF_TIME_CODE 0x20DF827D
-#define ECO_POWER_CODE 0x20DF02FD
-#define ECO_HOUR_UP_CODE 0x20DF1AE5
-#define ECO_MINUTE_DOWN_CODE 0x20DF9A65
-#define ECO_ENTER_CODE 0x20DFA25D
-#define ECO_RESUME_CODE 0x20DF22DD
-#define ECO_SUNLIGHT_CODE 0x20DF2AD5
-#define ECO_FULL_SPECTRUM_CODE 0x20DFAA55
-#define ECO_CRISP_BLUE_CODE 0x20DF926D
-#define ECO_DEEP_WATER_CODE 0x20DF12ED
-#define ECO_RED_UP_CODE 0x20DF0AF5
-#define ECO_GREEN_UP_CODE 0x20DF8A75
-#define ECO_BLUE_UP_CODE 0x20DFB24D
-#define ECO_WHITE_UP_CODE 0x20DF32CD
-#define ECO_RED_DOWN_CODE 0x20DF38C7
-#define ECO_GREEN_DOWN_CODE 0x20DFB847
-#define ECO_BLUE_DOWN_CODE 0x20DF7887
-#define ECO_WHITE_DOWN_CODE 0x20DFF807
-#define ECO_M1_CODE 0x20DF18E7
-#define ECO_M2_CODE 0x20DF9867
-#define ECO_DAYLIGHT_CODE 0x20DF58A7
-#define ECO_MOONLIGHT_CODE 0x20DFD827
-#define ECO_DYNAMIC_MOON_CODE 0x20DF28D7
-#define ECO_DYNAMIC_LIGHTNING_CODE 0x20DFA857
-#define ECO_DYNAMIC_CLOUD_CODE 0x20DF6897
-#define ECO_DYNAMIC_DAWN_DUSK_CODE 0x20DFE817
+#define ECO_SET_CLOCK_CODE 0x3AC5
+#define ECO_ON_TIME_CODE 0xBA45
+#define ECO_OFF_TIME_CODE 0x827D
+#define ECO_POWER_CODE 0x02FD
+#define ECO_HOUR_UP_CODE 0x1AE5
+#define ECO_MINUTE_DOWN_CODE 0x9A65
+#define ECO_ENTER_CODE 0xA25D
+#define ECO_RESUME_CODE 0x22DD
+#define ECO_SUNLIGHT_CODE 0x2AD5
+#define ECO_FULL_SPECTRUM_CODE 0xAA55
+#define ECO_CRISP_BLUE_CODE 0x926D
+#define ECO_DEEP_WATER_CODE 0x12ED
+#define ECO_RED_UP_CODE 0x0AF5
+#define ECO_GREEN_UP_CODE 0x8A75
+#define ECO_BLUE_UP_CODE 0xB24D
+#define ECO_WHITE_UP_CODE 0x32CD
+#define ECO_RED_DOWN_CODE 0x38C7
+#define ECO_GREEN_DOWN_CODE 0xB847
+#define ECO_BLUE_DOWN_CODE 0x7887
+#define ECO_WHITE_DOWN_CODE 0xF807
+#define ECO_M1_CODE 0x18E7
+#define ECO_M2_CODE 0x9867
+#define ECO_DAYLIGHT_CODE 0x58A7
+#define ECO_MOONLIGHT_CODE 0xD827
+#define ECO_DYNAMIC_MOON_CODE 0x28D7
+#define ECO_DYNAMIC_LIGHTNING_CODE 0xA857
+#define ECO_DYNAMIC_CLOUD_CODE 0x6897
+#define ECO_DYNAMIC_DAWN_DUSK_CODE 0xE817
 
 // Define IR codes for the Current USA Satellite Plus Pro fixture
-#define SATPP_SET_CLOCK_CODE 0x20DF3AC5
-#define SATPP_ON_TIME_CODE 0x20DFBA45
-#define SATPP_OFF_TIME_CODE 0x20DF827D
-#define SATPP_POWER_CODE 0x20DF02FD
-#define SATPP_HOUR_UP_CODE 0x20DF1AE5
-#define SATPP_MINUTE_DOWN_CODE 0x20DF9A65
-#define SATPP_ENTER_CODE 0x20DFA25D
-#define SATPP_RESUME_CODE 0x20DF22DD 
-#define SATPP_SUNLIGHT_CODE 0x20DF2AD5
-#define SATPP_FULL_SPECTRUM_CODE 0x20DFAA55
-#define SATPP_CRISP_BLUE_CODE 0x20DF926D
-#define SATPP_DEEP_WATER_CODE 0x20DF12ED
-#define SATPP_RED_UP_CODE 0x20DF0AF5
-#define SATPP_GREEN_UP_CODE 0x20DF8A75
-#define SATPP_BLUE_UP_CODE 0x20DFB24D
-#define SATPP_WHITE_UP_CODE 0x20DF32CD
-#define SATPP_RED_DOWN_CODE 0x20DF38C7
-#define SATPP_GREEN_DOWN_CODE 0x20DFB847
-#define SATPP_BLUE_DOWN_CODE 0x20DF7887
-#define SATPP_WHITE_DOWN_CODE 0x20DFF807
-#define SATPP_M1_CODE 0x20DF18E7
-#define SATPP_M2_CODE 0x20DF9867
-#define SATPP_DAYLIGHT_CODE 0x20DF58A7
-#define SATPP_MOONLIGHT_CODE 0x20DFD827
-#define SATPP_DYNAMIC_MOON_1_CODE 0x20DF28D7
-#define SATPP_DYNAMIC_MOON_2_CODE 0x20DFA857
-#define SATPP_DYNAMIC_CLOUD_CODE 0x20DF6897
-#define SATPP_DYNAMIC_DAWN_DUSK_CODE 0x20DFE817
-#define SATPP_STORM_1_CODE 0x20DF08F7
-#define SATPP_STORM_2_CODE 0x20DF8877
-#define SATPP_STORM_3_CODE 0x20DF48B7
-#define SATPP_STORM_4_CODE 0x20DFC837
+#define SATPP_SET_CLOCK_CODE 0x3AC5
+#define SATPP_ON_TIME_CODE 0xBA45
+#define SATPP_OFF_TIME_CODE 0x827D
+#define SATPP_POWER_CODE 0x02FD
+#define SATPP_HOUR_UP_CODE 0x1AE5
+#define SATPP_MINUTE_DOWN_CODE 0x9A65
+#define SATPP_ENTER_CODE 0xA25D
+#define SATPP_RESUME_CODE 0x22DD 
+#define SATPP_SUNLIGHT_CODE 0x2AD5
+#define SATPP_FULL_SPECTRUM_CODE 0xAA55
+#define SATPP_CRISP_BLUE_CODE 0x926D
+#define SATPP_DEEP_WATER_CODE 0x12ED
+#define SATPP_RED_UP_CODE 0x0AF5
+#define SATPP_GREEN_UP_CODE 0x8A75
+#define SATPP_BLUE_UP_CODE 0xB24D
+#define SATPP_WHITE_UP_CODE 0x32CD
+#define SATPP_RED_DOWN_CODE 0x38C7
+#define SATPP_GREEN_DOWN_CODE 0xB847
+#define SATPP_BLUE_DOWN_CODE 0x7887
+#define SATPP_WHITE_DOWN_CODE 0xF807
+#define SATPP_M1_CODE 0x18E7
+#define SATPP_M2_CODE 0x9867
+#define SATPP_DAYLIGHT_CODE 0x58A7
+#define SATPP_MOONLIGHT_CODE 0xD827
+#define SATPP_DYNAMIC_MOON_1_CODE 0x28D7
+#define SATPP_DYNAMIC_MOON_2_CODE 0xA857
+#define SATPP_DYNAMIC_CLOUD_CODE 0x6897
+#define SATPP_DYNAMIC_DAWN_DUSK_CODE 0xE817
+#define SATPP_STORM_1_CODE 0x08F7
+#define SATPP_STORM_2_CODE 0x8877
+#define SATPP_STORM_3_CODE 0x48B7
+#define SATPP_STORM_4_CODE 0xC837
 
 // Define IR codes for the Current USA Satellite Plus fixture
-#define SATP_ORANGE_CODE 0x20DF3AC5
-#define SATP_BLUE_CODE 0x20DFBA45
-#define SATP_ROSE_CODE 0x20DF827D
-#define SATP_POWER_CODE 0x20DF02FD
-#define SATP_WHITE_CODE 0x20DF1AE5
-#define SATP_FULL_SPEC_CODE 0x20DF9A65
-#define SATP_PURPLE_CODE 0x20DFA25D
-#define SATP_PLAY_PAUSE_CODE 0x20DF22DD
-#define SATP_RED_UP_CODE 0x20DF2AD5
-#define SATP_GREEN_UP_CODE 0x20DFAA55
-#define SATP_BLUE_UP_CODE 0x20DF926D
-#define SATP_WHITE_UP_CODE 0x20DF12ED
-#define SATP_RED_DOWN_CODE 0x20DF0AF5
-#define SATP_GREEN_DOWN_CODE 0x20DF8A75
-#define SATP_BLUE_DOWN_CODE 0x20DFB24D
-#define SATP_WHITE_DOWN_CODE 0x20DF32CD
-#define SATP_M1_CODE 0x20DF38C7
-#define SATP_M2_CODE 0x20DFB847
-#define SATP_M3_CODE 0x20DF7887
-#define SATP_M4_CODE 0x20DFF807
-#define SATP_MOON_1_CODE 0x20DF18E7
-#define SATP_MOON_2_CODE 0x20DF9867
-#define SATP_MOON_3_CODE 0x20DF58A7
-#define SATP_DAWN_DUSK_CODE 0x20DFD827
-#define SATP_CLOUD_1_CODE 0x20DF28D7
-#define SATP_CLOUD_2_CODE 0x20DFA857
-#define SATP_CLOUD_3_CODE 0x20DF6897
-#define SATP_CLOUD_4_CODE 0x20DFE817
-#define SATP_STORM_1_CODE 0x20DF08F7
-#define SATP_STORM_2_CODE 0x20DF8877
-#define SATP_STORM_3_CODE 0x20DF48B7
-#define SATP_STORM_4_CODE 0x20DFC837
+#define SATP_ORANGE_CODE 0x3AC5
+#define SATP_BLUE_CODE 0xBA45
+#define SATP_ROSE_CODE 0x827D
+#define SATP_POWER_CODE 0x02FD
+#define SATP_WHITE_CODE 0x1AE5
+#define SATP_FULL_SPEC_CODE 0x9A65
+#define SATP_PURPLE_CODE 0xA25D
+#define SATP_PLAY_PAUSE_CODE 0x22DD
+#define SATP_RED_UP_CODE 0x2AD5
+#define SATP_GREEN_UP_CODE 0xAA55
+#define SATP_BLUE_UP_CODE 0x926D
+#define SATP_WHITE_UP_CODE 0x12ED
+#define SATP_RED_DOWN_CODE 0x0AF5
+#define SATP_GREEN_DOWN_CODE 0x8A75
+#define SATP_BLUE_DOWN_CODE 0xB24D
+#define SATP_WHITE_DOWN_CODE 0x32CD
+#define SATP_M1_CODE 0x38C7
+#define SATP_M2_CODE 0xB847
+#define SATP_M3_CODE 0x7887
+#define SATP_M4_CODE 0xF807
+#define SATP_MOON_1_CODE 0x18E7
+#define SATP_MOON_2_CODE 0x9867
+#define SATP_MOON_3_CODE 0x58A7
+#define SATP_DAWN_DUSK_CODE 0xD827
+#define SATP_CLOUD_1_CODE 0x28D7
+#define SATP_CLOUD_2_CODE 0xA857
+#define SATP_CLOUD_3_CODE 0x6897
+#define SATP_CLOUD_4_CODE 0xE817
+#define SATP_STORM_1_CODE 0x08F7
+#define SATP_STORM_2_CODE 0x8877
+#define SATP_STORM_3_CODE 0x48B7
+#define SATP_STORM_4_CODE 0xC837
 
 // Define schedule weekdays
 #define NEVER 0
@@ -162,7 +165,7 @@
 #define SUN_AND_SAT 10
 
 // Define counts
-#define COLOR_VALUES_COUNT 5 // Power, M1, M2, Daylight, and Moonlight
+#define COLOR_VALUES_COUNT 5
 #define MEMORY_SCHEDULE_COUNT 50 // Must be multiples of 2
 #define TIMER_SCHEDULE_COUNT 50 // Must be multiples of 5
 
@@ -397,13 +400,13 @@ void initializeStuff()
       schedule);
 
   // Preapre the IR code array
-  FLASH_ARRAY(unsigned long, memoryIRCodes, ECO_POWER_CODE, ECO_M1_CODE, ECO_M2_CODE, ECO_DAYLIGHT_CODE,
+  FLASH_ARRAY(unsigned short, memoryIRCodes, ECO_POWER_CODE, ECO_M1_CODE, ECO_M2_CODE, ECO_DAYLIGHT_CODE,
       ECO_MOONLIGHT_CODE, SATPP_POWER_CODE, SATPP_M1_CODE, SATPP_M2_CODE, SATPP_DAYLIGHT_CODE,
       SATPP_MOONLIGHT_CODE, SATP_POWER_CODE, SATP_M1_CODE, SATP_M2_CODE, SATP_M3_CODE, SATP_M4_CODE);
 
   // Send the IR signal
   IRsend irSend;
-  irSend.sendNEC(memoryIRCodes[schedule.button], 32);
+  irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | memoryIRCodes[schedule.button], 32);
   delay(333);
 
   // Set the time for clearing the schedule counters
@@ -607,7 +610,7 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
 
   // Read the previous or current schedule's color values
   ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
-      (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule) % 5), 
+      EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), 
       prevValues);
 
   // Check if we should take the fade into account and if we didn't loop through all the schedules which
@@ -620,7 +623,7 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
   {
     // Read the next schedule's color values
     ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
-        (EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule) % 5),
+        EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule),
         nextValues);
 
     // Loop through the colors
@@ -891,7 +894,7 @@ void loop()
   }
 
   // Preapre the IR code array
-  FLASH_ARRAY(unsigned long, memoryIRCodes, ECO_POWER_CODE, ECO_M1_CODE, ECO_M2_CODE, ECO_DAYLIGHT_CODE,
+  FLASH_ARRAY(unsigned short, memoryIRCodes, ECO_POWER_CODE, ECO_M1_CODE, ECO_M2_CODE, ECO_DAYLIGHT_CODE,
       ECO_MOONLIGHT_CODE, SATPP_POWER_CODE, SATPP_M1_CODE, SATPP_M2_CODE, SATPP_DAYLIGHT_CODE,
       SATPP_MOONLIGHT_CODE, SATP_POWER_CODE, SATP_M1_CODE, SATP_M2_CODE, SATP_M3_CODE, SATP_M4_CODE);
 
@@ -910,7 +913,7 @@ void loop()
     {
       // Send the IR signal
       IRsend irSend;
-      irSend.sendNEC(memoryIRCodes[schedule.button], 32);
+      irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | memoryIRCodes[schedule.button], 32);
       delay(333);
    
       // Increment the counter
@@ -920,7 +923,7 @@ void loop()
   }
 
   // Prepare the IR code array
-  FLASH_ARRAY(unsigned long, timerIRCodes, ECO_SET_CLOCK_CODE, ECO_ON_TIME_CODE, ECO_OFF_TIME_CODE,
+  FLASH_ARRAY(unsigned short, timerIRCodes, ECO_SET_CLOCK_CODE, ECO_ON_TIME_CODE, ECO_OFF_TIME_CODE,
       ECO_POWER_CODE, ECO_HOUR_UP_CODE, ECO_MINUTE_DOWN_CODE, ECO_ENTER_CODE, ECO_RESUME_CODE, 
       ECO_SUNLIGHT_CODE, ECO_FULL_SPECTRUM_CODE, ECO_CRISP_BLUE_CODE, ECO_DEEP_WATER_CODE, 
       ECO_RED_UP_CODE, ECO_GREEN_UP_CODE, ECO_BLUE_UP_CODE, ECO_WHITE_UP_CODE, ECO_RED_DOWN_CODE,
@@ -957,7 +960,7 @@ void loop()
     {
       // Send the IR signal
       IRsend irSend;
-      irSend.sendNEC(timerIRCodes[schedule.button], 32);
+      irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | timerIRCodes[schedule.button], 32);
       delay(333);
       
       // Increment the counter   
@@ -971,7 +974,7 @@ void loop()
   ColorValues calcValues = calcColorValues(time, day, true, prevSchedule);
 
   // Prepare the IR code array
-  FLASH_ARRAY(unsigned long, irCodes, ECO_RED_UP_CODE, ECO_RED_DOWN_CODE, ECO_GREEN_UP_CODE, ECO_GREEN_DOWN_CODE,
+  FLASH_ARRAY(unsigned short, irCodes, ECO_RED_UP_CODE, ECO_RED_DOWN_CODE, ECO_GREEN_UP_CODE, ECO_GREEN_DOWN_CODE,
       ECO_BLUE_UP_CODE, ECO_BLUE_DOWN_CODE, ECO_WHITE_UP_CODE, ECO_WHITE_DOWN_CODE, SATPP_RED_UP_CODE,
       SATPP_RED_DOWN_CODE, SATPP_GREEN_UP_CODE, SATPP_GREEN_DOWN_CODE, SATPP_BLUE_UP_CODE, SATPP_BLUE_DOWN_CODE,
       SATPP_WHITE_UP_CODE, SATPP_WHITE_DOWN_CODE, SATP_RED_UP_CODE, SATP_GREEN_UP_CODE, SATP_BLUE_UP_CODE,
@@ -985,7 +988,7 @@ void loop()
     {
       // Send the IR code, wait, and adjust the current color value
       IRsend irSend;
-      irSend.sendNEC(irCodes[i * 2], 32);
+      irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | irCodes[i * 2], 32);
       delay(333);
       ++((byte*)&gCurrentColorValues)[i];
     }
@@ -993,7 +996,7 @@ void loop()
     {
       // Send the IR code, wait, and adjust the current color value
       IRsend irSend;
-      irSend.sendNEC(irCodes[i * 2 + 1], 32);
+      irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | irCodes[i * 2 + 1], 32);
       delay(333);
       --((byte *)&gCurrentColorValues)[i];
     }
