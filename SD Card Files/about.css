@@ -1,0 +1,6 @@
+@charset "UTF-8";
+
+#body p:last-of-type
+{
+  margin-bottom: 0px;
+}
