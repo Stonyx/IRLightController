@@ -9,7 +9,7 @@ $(document).ready(function()
 
     // Send the AJAX request
     $.ajax({
-      url: "/reboot",
+      url: "/reset",
       type: "GET",
     }).done(function(data, textStatus, jqXHR) 
     {

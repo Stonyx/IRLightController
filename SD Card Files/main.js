@@ -50,3 +50,14 @@ $.ajaxTransport("+*", function(options, originalOptions, jqXHR)
     };
   }
 });
+
+// Run this code when ready
+$(document).ready(function()
+{
+  // Attach to the dropdown menu achor tag in the navigation bar
+  $("#navbar-items .dropdown > a").on("click", function()
+  {
+    // Remove focus
+    $(this).blur();
+  })
+});

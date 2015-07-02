@@ -15,20 +15,77 @@ This software is provided "as is" without express or implied warranty.
 <html>
 
 <head>
-<link rel="stylesheet" type="text/css" href="bootstrp.css">
-<link rel="stylesheet" type="text/css" href="main.css">
-<script type="text/javascript" src="jquery.js"></script>
-<script type="text/javascript" src="main.js"></script>
-<script type="text/javascript" src="index.js"></script>
+<link rel="stylesheet" type="text/css" href="/bootstrp.css">
+<link rel="stylesheet" type="text/css" href="/main.css">
+<link rel="stylesheet" type="text/css" href="/ajax.css">
+<link rel="stylesheet" type="text/css" href="/index.css">
+<script type="text/javascript" src="/jquery.js"></script>
+<script type="text/javascript" src="/bootstrp.js"></script>
+<script type="text/javascript" src="/main.js"></script>
+<script type="text/javascript" src="/index.js"></script>
 <title>IR Light Controller</title>
 </head>
 
 <body>
-<div class="container">
-  <div class="row">
-    <div class="col-xs-12">
-      <h3 class="text-center"><strong>IR Light Controller</strong></h3>
+<div id="ajax-loader">
+  <div id="ajax-loader-page"></div>
 
+  <div id="ajax-loader-circle-1"></div>
+  <div id="ajax-loader-circle-2"></div>
+  <div id="ajax-loader-circle-3"></div>
+</div>
+  
+<div class="container">
+  <div id="header" class="row">
+    <a href="/"><h3 class="text-center">IR Light Controller</h3></a>
+   
+    <nav class="navbar">
+      <div class="navbar-header">
+        <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#navbar-items">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
+
+      <div id="navbar-items" class="collapse navbar-collapse">
+        <ul class="nav navbar-nav">
+          <li class="active">
+            <a href="/">Home</a>
+          </li>
+          <li>
+            <a href="/mem.htm">Memory Schedules</a>
+          </li>
+          <li>
+            <a href="/time.htm">Timer Schedules</a>
+          </li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Settings <span class="caret"></span></a>
+            <ul class="dropdown-menu">
+              <li>
+                <a href="/col.htm">Color Values</a>
+              </li>
+              <li>
+                <a href="/reboot.htm">Reboot</a>
+              </li>
+              <li>
+                <a href="/reset.htm">Reset All Settings</a>
+              </li>
+              <li class="divider"></li>
+              <li>
+                <a href="/about.htm">About</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>    
+  </div>
+
+  <div id="body" class="row">
+    <div class="col-xs-12">
       <h4>Current Time</h4>
       <span id="time">...</span>
 
@@ -50,34 +107,10 @@ This software is provided "as is" without express or implied warranty.
     <div class="col-xs-6 col-sm-3">
       White: <span id="white">...</span>
     </div>
+  </div>
 
-    <div class="col-xs-12">
-      <h4>Actions</h4>
-    </div>
-
-    <div class="col-xs-12 col-sm-4">
-      <a class="btn btn-primary btn-block" href="mem.htm">Memory Schedules</a>
-    </div>
-
-    <div class="col-xs-12 col-sm-4">
-      <a class="btn btn-primary btn-block" href="time.htm">Timer Schedules</a>
-    </div>
-
-    <div class="col-xs-12 col-sm-4">
-      <a class="btn btn-primary btn-block" href="col.htm">Color Values</a>
-    </div>
-
-    <div class="col-xs-12 col-sm-4">
-      <a class="btn btn-warning btn-block" href="reboot.htm">Reboot</a>
-    </div>
-
-    <div class="col-xs-12 col-sm-4">
-      <a class="btn btn-warning btn-block" href="reset.htm">Reset All Settings</a>
-    </div>
-
-    <div class="col-xs-12 col-sm-4">
-      <a class="btn btn-primary btn-block" href="about.htm">About</a>
-    </div>
+  <div id="footer" class="row">
+    <a href="/about.htm">&copy; 2015 Stonyx</a>
   </div>
 </div>
 </body>

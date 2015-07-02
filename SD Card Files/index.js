@@ -12,6 +12,9 @@
 // Run this when ready
 $(document).ready(function() 
 {
+  // Show the AJAX animation
+  $("#ajax-loader").show();
+
   // Send the AJAX request
   $.ajax({
     url: "getst",
@@ -51,5 +54,8 @@ $(document).ready(function()
     $("#green").html(values[1]);
     $("#blue").html(values[2]);
     $("#white").html(values[3]);
+    
+    // Hide the AJAX animation
+    $("#ajax-loader").hide();
   });
 });

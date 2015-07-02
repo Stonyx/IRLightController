@@ -1,0 +1,6 @@
+@charset "UTF-8";
+
+#body h4:first-of-type
+{
+  margin-top: 0px;
+}

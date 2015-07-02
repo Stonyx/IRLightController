@@ -13,7 +13,7 @@
 $(document).ready(function() 
 {
   // Show the AJAX animation
-  $("#ajax").show();
+  $("#ajax-loader").show();
 
   // Copy the schedule HTML
   for (var i = 2; i <= TIMER_SCHEDULE_COUNT; ++i)
@@ -45,7 +45,7 @@ $(document).ready(function()
 
   // Send the AJAX request
   $.ajax({
-    url: "getts",
+    url: "/getts",
     type: "GET",
     dataType: "arraybuffer",
     processData: "false",
@@ -81,14 +81,14 @@ $(document).ready(function()
     }
 
     // Hide the AJAX animation
-    $("#ajax").hide();
+    $("#ajax-loader").hide();
   });
 
-  // Attach to the button
-  $("button").on("click", function()
+  // Attach to the Save button
+  $(".btn-green").on("click", function()
   {
     // Show the AJAX animation
-    $("#ajax").show();
+    $("#ajax-loader").show();
 
     // Create the data array
     var data = new Uint8Array(SIZE_OF_TIMER_SCHEDULE * TIMER_SCHEDULE_COUNT);
@@ -126,8 +126,8 @@ $(document).ready(function()
     }).done(function(data, textStatus, jqXHR)
     {
       // Hide the AJAX animation and redirect to the index page
-      $("#ajax").hide();
-      window.location.href = 'index.htm';
+      $("#ajax-loader").hide();
+      window.location.href = "/index.htm";
     });
   });
 });

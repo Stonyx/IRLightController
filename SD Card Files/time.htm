@@ -19,44 +19,71 @@ This software is provided "as is" without express or implied warranty.
 <link rel="stylesheet" type="text/css" href="main.css">
 <link rel="stylesheet" type="text/css" href="ajax.css">
 <script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="bootstrp.js"></script>
 <script type="text/javascript" src="main.js"></script>
 <script type="text/javascript" src="time.js"></script>
 <title>IR Light Controller - Timer Schedules</title>
 </head>
 
 <body>
-<div id="ajax">
-  <div id="ajax-screen"></div>
+<div id="ajax-loader">
+  <div id="ajax-loader-page"></div>
 
-  <div id="ajax-center">
-    <div id="ajax-ball-1" class="ajax-ball-box">
-      <div class="ajax-ball"></div>
-    </div>
-
-    <div id="ajax-loader-ball-2" class="ajax-ball-box">
-      <div class="ajax-loader-ball"></div>
-    </div>
-
-    <div id="ajax-ball-3" class="ajax-ball-box">
-      <div class="ajax-ball"></div>
-    </div>
-
-    <div id="ajax-ball-4" class="ajax-ball-box">
-      <div class="ajax-ball"></div>
-    </div>
-
-    <div id="ajax-ball-5" class="ajax-ball-box">
-      <div class="ajax-ball"></div>
-    </div>
-  </div>
+  <div id="ajax-loader-circle-1"></div>
+  <div id="ajax-loader-circle-2"></div>
+  <div id="ajax-loader-circle-3"></div>
 </div>
     
 <div class="container">
-  <div class="row">
-    <div class="col-xs-12">
-      <h3 class="text-center"><strong>IR Light Controller<br>Timer Schedules</strong></h3>
-    </div>
+  <div id="header" class="row">
+    <a href="/"><h3 class="text-center">IR Light Controller</h3></a>
+   
+    <nav class="navbar">
+      <div class="navbar-header">
+        <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#navbar-items">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+      </div>
 
+      <div id="navbar-items" class="collapse navbar-collapse">
+        <ul class="nav navbar-nav">
+          <li>
+            <a href="/">Home</a>
+          </li>
+          <li>
+            <a href="/mem.htm">Memory Schedules</a>
+          </li>
+          <li class="active">
+            <a href="/time.htm">Timer Schedules</a>
+          </li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Settings <span class="caret"></span></a>
+            <ul class="dropdown-menu">
+              <li>
+                <a href="/col.htm">Color Values</a>
+              </li>
+              <li>
+                <a href="/reboot.htm">Reboot</a>
+              </li>
+              <li>
+                <a href="/reset.htm">Reset All Settings</a>
+              </li>
+              <li class="divider"></li>
+              <li>
+                <a href="/about.htm">About</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>    
+  </div>
+
+  <div class="row">
     <div id="schedules">
       <div id="schedule-1">
         <div class="col-xs-12">
@@ -66,40 +93,100 @@ This software is provided "as is" without express or implied warranty.
         </div>
 
         <div class="col-xs-12 col-sm-6 form-group">
-          <label for="button-1">Button (E-Series / Sat. Plus Pro / Sat. Plus)</label>
+          <label for="button-1">Button</label>
           <select id="button-1" class="form-control">
-            <option value="0">Set Clock / Set Clock / Orange</option>
-            <option value="1">On Time / On Time / Blue</option>
-            <option value="2">Off Time / Off Time / Rose</option>
-            <option value="3">Power / Power / Power</option>
-            <option value="4">Hour Up / Hour Up / White</option>
-            <option value="5">Minute Down / Minute Down / Full Spectrum</option>
-            <option value="6">Enter / Enter / Purple</option>
-            <option value="7">Resume / Resume / Play/Pause</option>
-            <option value="8">Sunlight / Sunlight / Red Up</option>
-            <option value="9">Full Spectrum / Full Spectrum / Green Up</option>
-            <option value="10">Crisp Blue / Crisp Blue / Blue Up</option>
-            <option value="11">Deep Water / Deep Water / White Up</option>
-            <option value="12">Red Up / Red Up / Red Down</option>
-            <option value="13">Green Up / Green Up / Green Down</option>
-            <option value="14">Blue Up / Blue Up / Blue Down</option>
-            <option value="15">White Up / White Up / White Down</option>
-            <option value="16">Red Down / Red Down / Memory 1</option>
-            <option value="17">Green Down / Green Down / Memory 2</option>
-            <option value="18">Blue Down / Blue Down / Memory 3</option>
-            <option value="19">White Down / White Down / Memory 4</option>
-            <option value="20">Memory 1 / Memory 1 / Moon 1</option>
-            <option value="21">Memory 2 / Memory 2 / Moon 2</option>
-            <option value="22">Daylight / Daylight / Moon 3</option>
-            <option value="23">Moonlight / Moonlight / Dawn/Dusk</option>
-            <option value="24">Dynamic Moon / ? / Cloud 1</option>
-            <option value="25">Dynamic Lightning / ? / Cloud 2</option>
-            <option value="26">Dynamic Cloud / ? / Cloud 3</option>
-            <option value="27">Dynamic Fade / ? / Cloud 4</option>
-            <option value="28">N/A / ? / Storm 1</option>
-            <option value="28">N/A / ? / Storm 2</option>
-            <option value="28">N/A / ? / Storm 3</option>
-            <option value="28">N/A / ? / Storm 4</option>
+            <option value="0">E-Series: Set Clock</option>
+            <option value="1">E-Series: On Time</option>
+            <option value="2">E-Series: Off Time</option>
+            <option value="3">E-Series: Power</option>
+            <option value="4">E-Series: Hour Up</option>
+            <option value="5">E-Series: Minute Down</option>
+            <option value="6">E-Series: Enter</option>
+            <option value="7">E-Series: Resume</option>
+            <option value="8">E-Series: Sunlight</option>
+            <option value="9">E-Series: Full Spectrum</option>
+            <option value="10">E-Series: Crisp Blue</option>
+            <option value="11">E-Series: Deep Water</option>
+            <option value="12">E-Series: Red Up</option>
+            <option value="13">E-Series: Green Up</option>
+            <option value="14">E-Series: Blue Up</option>
+            <option value="15">E-Series: White Up</option>
+            <option value="16">E-Series: Red Down</option>
+            <option value="17">E-Series: Green Down</option>
+            <option value="18">E-Series: Blue Down</option>
+            <option value="19">E-Series: White Down</option>
+            <option value="20">E-Series: Memory 1</option>
+            <option value="21">E-Series: Memory 2</option>
+            <option value="22">E-Series: Daylight</option>
+            <option value="23">E-Series: Moonlight</option>
+            <option value="24">E-Series: Dynamic Moon</option>
+            <option value="25">E-Series: Dynamic Lightning</option>
+            <option value="26">E-Series: Dynamic Cloud</option>
+            <option value="27">E-Series: Dynamic Dawn/Dusk</option>
+            <option value="28">Sat. Plus Pro: Set Clock</option>
+            <option value="29">Sat. Plus Pro: On Time</option>
+            <option value="30">Sat. Plus Pro: Off Time</option>
+            <option value="31">Sat. Plus Pro: Power</option>
+            <option value="32">Sat. Plus Pro: Hour Up</option>
+            <option value="33">Sat. Plus Pro: Minute Down</option>
+            <option value="34">Sat. Plus Pro: Enter</option>
+            <option value="35">Sat. Plus Pro: Resume</option>
+            <option value="36">Sat. Plus Pro: Sunlight</option>
+            <option value="37">Sat. Plus Pro: Full Spectrum</option>
+            <option value="38">Sat. Plus Pro: Crisp Blue</option>
+            <option value="39">Sat. Plus Pro: Deep Water</option>
+            <option value="40">Sat. Plus Pro: Red Up</option>
+            <option value="41">Sat. Plus Pro: Green Up</option>
+            <option value="42">Sat. Plus Pro: Blue Up</option>
+            <option value="43">Sat. Plus Pro: White Up</option>
+            <option value="44">Sat. Plus Pro: Red Down</option>
+            <option value="45">Sat. Plus Pro: Green Down</option>
+            <option value="46">Sat. Plus Pro: Blue Down</option>
+            <option value="47">Sat. Plus Pro: White Down</option>
+            <option value="48">Sat. Plus Pro: Memory 1</option>
+            <option value="49">Sat. Plus Pro: Memory 2</option>
+            <option value="50">Sat. Plus Pro: Daylight</option>
+            <option value="51">Sat. Plus Pro: Moonlight</option>
+            <option value="52">Sat. Plus Pro: Dynamic Moon 1</option>
+            <option value="53">Sat. Plus Pro: Dynamic Moon 2</option>
+            <option value="54">Sat. Plus Pro: Dynamic Cloud</option>
+            <option value="55">Sat. Plus Pro: Dynamic Dawn/Dusk</option>
+            <option value="56">Sat. Plus Pro: Dynamic Storm 1</option>
+            <option value="57">Sat. Plus Pro: Dynamic Storm 2</option>
+            <option value="58">Sat. Plus Pro: Dynamic Storm 3</option>
+            <option value="59">Sat. Plus Pro: Dynamic Storm 4</option>
+            <option value="60">Sat. Plus: Orange</option>
+            <option value="61">Sat. Plus: Blue</option>
+            <option value="62">Sat. Plus: Rose</option>
+            <option value="63">Sat. Plus: Power</option>
+            <option value="64">Sat. Plus: White</option>
+            <option value="65">Sat. Plus: Full Spectrum</option>
+            <option value="66">Sat. Plus: Purple</option>
+            <option value="67">Sat. Plus: Play/Pause</option>
+            <option value="68">Sat. Plus: Red Up</option>
+            <option value="69">Sat. Plus: Green Up</option>
+            <option value="70">Sat. Plus: Blue Up</option>
+            <option value="71">Sat. Plus: White Up</option>
+            <option value="72">Sat. Plus: Red Down</option>
+            <option value="73">Sat. Plus: Green Down</option>
+            <option value="74">Sat. Plus: Blue Down</option>
+            <option value="75">Sat. Plus: White Down</option>
+            <option value="76">Sat. Plus: Memory 1</option>
+            <option value="77">Sat. Plus: Memory 2</option>
+            <option value="78">Sat. Plus: Memory 3</option>
+            <option value="79">Sat. Plus: Memory 4</option>
+            <option value="80">Sat. Plus: Dynamic Moon 1</option>
+            <option value="81">Sat. Plus: Dynamic Moon 2</option>
+            <option value="82">Sat. Plus: Dynamic Moon 3</option>
+            <option value="83">Sat. Plus: Dynamic Dawn/Dusk</option>
+            <option value="84">Sat. Plus: Dynamic Cloud 1</option>
+            <option value="85">Sat. Plus: Dynamic Cloud 2</option>
+            <option value="86">Sat. Plus: Dynamic Cloud 3</option>
+            <option value="87">Sat. Plus: Dynamic Cloud 4</option>
+            <option value="88">Sat. Plus: Dynamic Storm 1</option>
+            <option value="89">Sat. Plus: Dynamic Storm 2</option>
+            <option value="90">Sat. Plus: Dynamic Storm 3</option>
+            <option value="91">Sat. Plus: Dynamic Storm 4</option>
           </select>
         </div>
 
@@ -289,12 +376,16 @@ This software is provided "as is" without express or implied warranty.
     </div>
 
     <div class="col-xs-12 col-sm-6">
-      <button class="btn btn-success btn-block">Save</button>
+      <button class="btn btn-green btn-block">Save</button>
     </div>
     
     <div class="col-xs-12 col-sm-6">
-      <a class="btn btn-danger btn-block" href="index.htm">Cancel</a>
+      <a class="btn btn-red btn-block" href="index.htm">Cancel</a>
     </div>
+  </div>
+
+  <div id="footer" class="row">
+    <a href="/about.htm">&copy; 2015 Stonyx</a>
   </div>
 </div>
 </body>

@@ -1,29 +1,136 @@
 @charset "UTF-8";
 
 /* Remove Bootstrap rounded corners */
-.btn, .form-control
+.btn,
+.form-control,
+.navbar
 {
   border-radius: 0px !important;
   -moz-border-radius: 0px !important;
   -webkit-border-radius: 0px !important;
 }
 
-/* Change the color of headings */
+/* Style the title */
+#header a:hover,
+#header a:focus
+{
+  text-decoration: none;
+}
+#header h3
+{
+  color: #3B79A4;
+  font-weight: bold;
+}
+
+/* Style the navigation bar */
+.navbar
+{
+  background-image: -moz-linear-gradient(top, #219DF3, #555555);
+  background-image: -ms-linear-gradient(top, #219DF3, #555555); 
+  background-image: -o-linear-gradient(top, #219DF3, #555555); 
+  background-image: -webkit-linear-gradient(top, #219DF3, #555555); 
+  background-image: linear-gradient(#219DF3, #555555); 
+  border-color: #555555;
+  filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#219DF3', EndColorStr='#555555')";
+  -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#219DF3', EndColorStr='#555555')";
+}
+#navbar-items a
+{
+  color: #FFFFFF;
+}
+#navbar-items .active > a
+{
+  background-color: #000000;
+}
+#navbar-items a:hover,
+#navbar-items a:focus,
+#navbar-items .open > a
+{
+  background-color: #333333;
+}
+@media (max-width: 767px)
+{
+  .navbar .icon-bar
+  {
+    background-color: #FFFFFF;
+  }
+}
+@media (min-width: 768px)
+{
+  #navbar-items
+  {
+    padding-left: 0;
+  }
+  #navbar-items .dropdown-menu a
+  {
+    color: #333333;
+  }
+  #navbar-items .dropdown-menu .active a,
+  #navbar-items .dropdown-menu a:hover,
+  #navbar-items .dropdown-menu a:focus
+  {
+    color: #FFFFFF;
+  }
+}
+
+/* Style the headings */
 h4
 {
   margin-bottom: 5px;
 }
 
-/* Add extra padding to buttons */
-.btn
-{
-  margin-bottom: 15px;
-}
-
-/* Add a line style */
+/* Add a line class */
 .line
 {
-  background-color: #333333;
+  background-color: #3B79A4;
   height: 2px;
   margin-bottom: 10px;
+}
+
+/* Add a btn-green class */
+.btn-green
+{
+  background-image: -moz-linear-gradient(top, #398f28, #193f11);
+  background-image: -ms-linear-gradient(top, #398f28, #193f11);
+  background-image: -o-linear-gradient(top, #398f28, #193f11);
+  background-image: -webkit-linear-gradient(top, #398f28, #193f11);
+  background-image: linear-gradient(#398f28, #193f11);
+  border-color: #193F11;
+  color: #FFFFFF;
+  filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#398f28', EndColorStr='#193f11')";
+  margin-top: 15px;
+  -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#398f28', EndColorStr='#193f11')";
+}
+
+/* Add a btn-red class */
+.btn-red 
+{
+  background-image: -moz-linear-gradient(top, #b42121, #5e1111);
+  background-image: -ms-linear-gradient(top, #b42121, #5e1111);
+  background-image: -o-linear-gradient(top, #b42121, #5e1111);
+  background-image: -webkit-linear-gradient(top, #b42121, #5e1111);
+  background-image: linear-gradient(#b42121, #5e1111);
+  border-color: #5E1111;
+  color: #FFFFFF;
+  filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#b42121', EndColorStr='#5e1111')";
+  margin-top: 15px;
+  -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#b42121', EndColorStr='#5e1111')";
+}
+
+/* Style the footer */
+#footer
+{
+  border-top: 2px solid #3B79A4;
+  margin-bottom: 15px;
+  margin-top: 15px;  
+  padding-top: 5px;
+}
+#footer a
+{
+  color: #333333;
+}
+#footer a:hover,
+#footer a:focus
+{
+  text-decoration: none;
 }
