@@ -50,9 +50,9 @@
 {
   background-color: #000000;
 }
+#navbar-items .open > a,
 #navbar-items a:hover,
-#navbar-items a:focus,
-#navbar-items .open > a
+#navbar-items a:focus
 {
   background-color: #333333;
 }
@@ -69,15 +69,9 @@
   {
     padding-left: 0;
   }
-  #navbar-items .dropdown-menu a
+  #navbar-items .dropdown-menu :not(.active) a:not(:hover):not(:focus)
   {
     color: #333333;
-  }
-  #navbar-items .dropdown-menu .active a,
-  #navbar-items .dropdown-menu a:hover,
-  #navbar-items .dropdown-menu a:focus
-  {
-    color: #FFFFFF;
   }
 }
 
