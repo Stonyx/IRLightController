@@ -55,7 +55,8 @@ $(document).ready(function()
     type: "GET",
     dataType: "arraybuffer",
     processData: "false",
-  }).done(function(data, textStatus, jqXHR)
+  }).
+  done(function(data, textStatus, jqXHR)
   {
     // Convert the data to a unsigned byte array
     data = new Uint8Array(data);
@@ -64,7 +65,7 @@ $(document).ready(function()
     for (var i = 1; i <= MEMORY_SCHEDULE_COUNT; ++i)
     {
       // Get the schedule data from the array
-      var baseLocation = SIZE_OF_MEMORY_SCHEDULE * (i - 1)
+      var baseLocation = SIZE_OF_MEMORY_SCHEDULE * (i - 1);
       var button = data[baseLocation];
       var weekday = data[baseLocation + 1];
       var startTime = 0x00000000;
@@ -102,6 +103,14 @@ $(document).ready(function()
 
     // Hide the AJAX animation
     $("#ajax-loader").hide();
+  }).
+  fail(function(jqXHR, textStatus, errorThrown)
+  {
+    // Hide the AJAX animation
+    $("#ajax-loader").hide();
+
+    // Show the error message
+    alert("Failed to retrieve memory schedules.")
   });
 
   // Attach to the Save button
@@ -154,11 +163,22 @@ $(document).ready(function()
       dataType: "arraybuffer",
       processData: "false",
       data: data
-    }).done(function(data, textStatus, jqXHR)
+    }).
+    done(function(data, textStatus, jqXHR)
     {
-      // Hide the AJAX animation and redirect to the index page
+      // Hide the AJAX animation      
       $("#ajax-loader").hide();
+
+      // Redirect to the index page
       window.location.href = "/index.htm";
+    }).
+    fail(function(jqXHR, textStatus, errorThrown)
+    {
+      // Hide the AJAX animation
+      $("#ajax-loader").hide();
+
+      // Show the error message
+      alert("Failed to save memory schedules.")
     });
   });
 });

@@ -11,14 +11,26 @@ $(document).ready(function()
     $.ajax({
       url: "/reset",
       type: "GET",
-    }).done(function(data, textStatus, jqXHR) 
+    }).
+    done(function(data, textStatus, jqXHR) 
     {
-      // After 1 minute hide the AJAX animation and redirect to the index page
+      // Wait 1 minute
       setTimeout(function()
       {
+        // Hide the AJAX animation
         $("#ajax-loader").hide();
+
+        // Redirect to the index page
         window.location.href = "/index.htm";
       }, 60000);
-    }); 
+    }).
+    fail(function(jqXHR, textStatus, errorThrown)
+    {
+      // Hide the AJAX animation
+      $("#ajax-loader").hide();
+
+      // Show the error message
+      alert("Failed to trigger reset.")
+    });
   });
 });

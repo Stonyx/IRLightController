@@ -49,7 +49,8 @@ $(document).ready(function()
     type: "GET",
     dataType: "arraybuffer",
     processData: "false",
-  }).done(function(data, textStatus, jqXHR)
+  }).
+  done(function(data, textStatus, jqXHR)
   {
     // Convert the data to a unsigned byte array
     data = new Uint8Array(data);
@@ -82,6 +83,14 @@ $(document).ready(function()
 
     // Hide the AJAX animation
     $("#ajax-loader").hide();
+  }).
+  fail(function(jqXHR, textStatus, errorThrown)
+  {
+    // Hide the AJAX animation
+    $("#ajax-loader").hide();
+
+    // Show the error message
+    alert("Failed to retrieve timer schedules.")
   });
 
   // Attach to the Save button
@@ -118,16 +127,27 @@ $(document).ready(function()
 
     // Send the data
     $.ajax({
-      url: "setts",
+      url: "/setts",
       type: "GET",
       dataType: "arraybuffer",
       processData: "false",
       data: data
-    }).done(function(data, textStatus, jqXHR)
+    }).
+    done(function(data, textStatus, jqXHR)
     {
-      // Hide the AJAX animation and redirect to the index page
+      // Hide the AJAX animation
       $("#ajax-loader").hide();
+
+      // Redirect to the index page
       window.location.href = "/index.htm";
+    }).
+    fail(function(jqXHR, textStatus, errorThrown)
+    {
+      // Hide the AJAX animation
+      $("#ajax-loader").hide();
+
+      // Show the error message
+      alert("Failed to save timer schedules.")
     });
   });
 });

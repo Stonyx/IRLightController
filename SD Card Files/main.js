@@ -17,40 +17,6 @@ var SIZE_OF_COLOR_VALUES = 4;
 var SIZE_OF_MEMORY_SCHEDULE = 10;
 var SIZE_OF_TIMER_SCHEDULE = 6;
 
-// Register an AJAX transport for receiving array buffer data
-$.ajaxTransport("+*", function(options, originalOptions, jqXHR)
-{
-  // Check if the data type is set to an array buffer
-  if (options.dataType == 'arraybuffer')
-  {
-    return {
-      send: function(headers, completeCallback)
-      {
-        // Create the request object
-        var xhr = new XMLHttpRequest();
-        
-        // Add the load event listener
-        xhr.addEventListener('load', function()
-        {
-          // Call the callback method
-          var response = {};
-          response[options.dataType] = xhr.response;
-          completeCallback(xhr.status, xhr.statusText, response, xhr.getAllResponseHeaders());
-        });
-
-        // Send the request
-        xhr.open(options.type, options.url, options.async);
-        xhr.responseType = options.dataType;
-        xhr.send();
-      },
-      abort: function()
-      {
-        jqXHR.abort();
-      }
-    };
-  }
-});
-
 // Run this code when ready
 $(document).ready(function()
 {

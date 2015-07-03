@@ -17,11 +17,12 @@ $(document).ready(function()
 
   // Send the AJAX request
   $.ajax({
-    url: "getst",
+    url: "/getst",
     type: "GET",
     dataType: "arraybuffer",
     processData: "false",
-  }).done(function(data, textStatus, jqXHR)
+  }).
+  done(function(data, textStatus, jqXHR)
   {
     // Get the time and the color values data
     var time = new Uint32Array(data).subarray(0, 1);
@@ -54,8 +55,16 @@ $(document).ready(function()
     $("#green").html(values[1]);
     $("#blue").html(values[2]);
     $("#white").html(values[3]);
-    
+
     // Hide the AJAX animation
     $("#ajax-loader").hide();
+  }).
+  fail(function(jqXHR, textStatus, errorThrown)
+  {
+    // Hide the AJAX animation
+    $("#ajax-loader").hide();
+
+    // Show the error message
+    alert("Failed to retrieve time and color values.")
   });
 });
