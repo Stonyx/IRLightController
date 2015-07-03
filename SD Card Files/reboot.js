@@ -1,5 +1,16 @@
+// IR Light Controller
+// Copyright (C) 2015 Stonyx
+//
+// This software is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+// International License.
+//
+// You can redistribute and/or modify this software for non-commerical purposes under the terms
+// of the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+//
+// This software is provided "as is" without express or implied warranty.
+
 // Run this when ready
-$(document).ready(function() 
+$(document).ready(function()
 {
   // Attach to the Yes button
   $(".btn-green").on("click", function()
@@ -10,9 +21,9 @@ $(document).ready(function()
     // Send the AJAX request
     $.ajax({
       url: "/reboot",
-      type: "GET",
+      type: "GET"
     }).
-    done(function(data, textStatus, jqXHR) 
+    done(function(data, textStatus, jqXHR)
     {
       // Wait 1 minute
       setTimeout(function()
@@ -30,7 +41,7 @@ $(document).ready(function()
       $("#ajax-loader").hide();
 
       // Show the error message
-      alert("Failed to trigger reboot.")
-    });; 
+      alert("Failed to trigger reboot.");
+    });
   });
 });

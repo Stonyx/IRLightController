@@ -4,13 +4,13 @@
 // This software is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 // International License.
 //
-// You can redistribute and/or modify this software for non-commerical purposes under the terms 
+// You can redistribute and/or modify this software for non-commerical purposes under the terms
 // of the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 //
 // This software is provided "as is" without express or implied warranty.
 
 // Run this when ready
-$(document).ready(function() 
+$(document).ready(function()
 {
   // Show the AJAX animation
   $("#ajax-loader").show();
@@ -20,7 +20,7 @@ $(document).ready(function()
     url: "/getst",
     type: "GET",
     dataType: "arraybuffer",
-    processData: "false",
+    processData: "false"
   }).
   done(function(data, textStatus, jqXHR)
   {
@@ -30,7 +30,7 @@ $(document).ready(function()
 
     // Create a date object and other needed variables
     var date = new Date(time[0] * 1000);
-    var months = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", 
+    var months = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.",
         "Nov.", "Dec."];
     var hours = date.getUTCHours();
     var amPM = "AM";
@@ -48,7 +48,7 @@ $(document).ready(function()
       amPM = "PM";
     }
 
-    // Display the time and color values      
+    // Display the time and color values
     $("#time").html(months[date.getUTCMonth()] + " " + date.getUTCDate() + ", " + date.getUTCFullYear() +
         " @ " + hours + ":" + date.getUTCMinutes() + amPM);
     $("#red").html(values[0]);
@@ -65,6 +65,6 @@ $(document).ready(function()
     $("#ajax-loader").hide();
 
     // Show the error message
-    alert("Failed to retrieve time and color values.")
+    alert("Failed to retrieve time and color values.");
   });
 });

@@ -4,20 +4,20 @@
 // This software is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 // International License.
 //
-// You can redistribute and/or modify this software for non-commerical purposes under the terms 
+// You can redistribute and/or modify this software for non-commerical purposes under the terms
 // of the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 //
 // This software is provided "as is" without express or implied warranty.
 
 // Run this when ready
-$(document).ready(function() 
+$(document).ready(function()
 {
   // Show the AJAX animation
   $("#ajax-loader").show();
 
   // Copy the schedule HTML
   for (var i = 2; i <= TIMER_SCHEDULE_COUNT; ++i)
-  { 
+  {
     // Clone the first schedule and change heading text and various IDs
     var schedule = $("#schedule-1").clone();
     schedule.attr("id", "schedule-" + i);
@@ -48,7 +48,7 @@ $(document).ready(function()
     url: "/getts",
     type: "GET",
     dataType: "arraybuffer",
-    processData: "false",
+    processData: "false"
   }).
   done(function(data, textStatus, jqXHR)
   {
@@ -66,7 +66,7 @@ $(document).ready(function()
       for (var j = baseLocation + 2; j < baseLocation + 6; ++j)
       {
         startTime = startTime | (data[j] << (8 * (j - (baseLocation + 2))));
-      }     
+      }
 
       // Calculate the start times
       var startHour = startTime / 3600 /* 60 * 60 */ | 0x00000000;

@@ -4,20 +4,20 @@
 // This software is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 // International License.
 //
-// You can redistribute and/or modify this software for non-commerical purposes under the terms 
+// You can redistribute and/or modify this software for non-commerical purposes under the terms
 // of the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 //
 // This software is provided "as is" without express or implied warranty.
 
 // Run this when ready
-$(document).ready(function() 
+$(document).ready(function()
 {
   // Show the AJAX animation
   $("#ajax-loader").show();
 
   // Copy the schedule HTML
   for (var i = 2; i <= MEMORY_SCHEDULE_COUNT; ++i)
-  { 
+  {
     // Clone the first schedule and change heading text and various IDs
     var schedule = $("#schedule-1").clone();
     schedule.attr("id", "schedule-" + i);
@@ -54,7 +54,7 @@ $(document).ready(function()
     url: "/getms",
     type: "GET",
     dataType: "arraybuffer",
-    processData: "false",
+    processData: "false"
   }).
   done(function(data, textStatus, jqXHR)
   {
@@ -166,7 +166,7 @@ $(document).ready(function()
     }).
     done(function(data, textStatus, jqXHR)
     {
-      // Hide the AJAX animation      
+      // Hide the AJAX animation
       $("#ajax-loader").hide();
 
       // Redirect to the index page
@@ -178,7 +178,7 @@ $(document).ready(function()
       $("#ajax-loader").hide();
 
       // Show the error message
-      alert("Failed to save memory schedules.")
+      alert("Failed to save memory schedules.");
     });
   });
 });
