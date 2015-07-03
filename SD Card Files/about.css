@@ -1,5 +1,13 @@
 @charset "UTF-8";
 
+#body img
+{
+  float: left;
+  margin-bottom: 5px;
+  margin-right: 15px;
+  margin-top: 5px;
+}
+
 #body p:last-of-type
 {
   margin-bottom: 0px;

@@ -39,7 +39,8 @@
   background-image: linear-gradient(#219DF3, #555555); 
   border-color: #555555;
   filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#219DF3', EndColorStr='#555555')";
-  -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#219DF3', EndColorStr='#555555')";  
+  margin-bottom: 15px;
+  -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorStr='#219DF3', EndColorStr='#555555')";
 }
 #navbar-items a
 {
