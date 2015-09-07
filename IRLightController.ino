@@ -4,7 +4,7 @@
 // This software is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 // International License.
 //
-// You can redistribute and/or modify this software for non-commerical purposes under the terms 
+// You can redistribute and/or modify this software for non-commerical purposes under the terms
 // of the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 //
 // This software is provided "as is" without express or implied warranty.
@@ -91,7 +91,7 @@
 #define SATPP_HOUR_UP_CODE 0x1AE5
 #define SATPP_MINUTE_DOWN_CODE 0x9A65
 #define SATPP_ENTER_CODE 0xA25D
-#define SATPP_RESUME_CODE 0x22DD 
+#define SATPP_RESUME_CODE 0x22DD
 #define SATPP_SUNLIGHT_CODE 0x2AD5
 #define SATPP_FULL_SPECTRUM_CODE 0xAA55
 #define SATPP_CRISP_BLUE_CODE 0x926D
@@ -222,7 +222,7 @@ void setup()
   DEBUG_SERIAL_BEGIN();
   DEBUG_LOG_LN(F("Starting IR Light Controller sketch ..."));
   DEBUG_LOG_FREE_RAM();
-  
+
   // Set the two SS pins to output mode and set them both to high
   pinMode(SD_CARD_PIN, OUTPUT);
   pinMode(ETHERNET_PIN, OUTPUT);
@@ -234,11 +234,11 @@ void setup()
   if (!SD.begin(SD_CARD_PIN))
     DEBUG_LOG_LN(F("Failed to start SD card"));
 
-  // Start the ethernet  
+  // Start the ethernet
   DEBUG_LOG_LN(F("Starting ethernet ..."));
   uint8_t mac[] = { 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90 };
   #ifdef DEBUG
-  Ethernet.begin(mac, IPAddress(192, 168, 0, 254));
+  Ethernet.begin(mac, IPAddress(192, 168, 1, 254), IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
   #else
   if (!Ethernet.begin(mac))
     DEBUG_LOG_LN(F("Failed to start ethernet"));
@@ -247,7 +247,7 @@ void setup()
   // Start the server
   DEBUG_LOG_LN(F("Starting server ..."));
   gServer.begin();
-  
+
   // Start the time sync
   DEBUG_LOG_LN(F("Synching time with NTP server ..."));
   setSyncProvider(&getNtpTime);
@@ -276,11 +276,11 @@ unsigned long getNtpTime()
 
   // Clear any previously received data
   udp.flush();
-    
+
   // Create the packet
   // Note: only the first four bytes of an outgoing NTP packet need to be set
   const unsigned long packet = 0xEC0600E3;
-  
+
   // Send the NTP request
   DEBUG_LOG_LN(F("Sending UDP packet ..."));
   const char timeServer[] = "pool.ntp.org";
@@ -311,20 +311,20 @@ unsigned long getNtpTime()
     // Check if we have a full packet waiting to be read
     if ((size = udp.parsePacket()) >= 48)
       break;
-    
+
     // Delay 150ms
     delay(NTP_POLL_INTERVAL);
   }
-  
+
   // Log details
   DEBUG_LOG(F("Received "));
   DEBUG_LOG(size);
   DEBUG_LOG_LN(F(" byte(s)"));
-  
+
   // Make sure we receive a full packet
   if (size < 48)
-    return 0;    
-    
+    return 0;
+
   // Read and discard the first 40 bytes
   for (byte i = 0; i < 40; ++i)
     udp.read();
@@ -336,26 +336,26 @@ unsigned long getNtpTime()
 
   // Discard the rest of the packet
   udp.flush();
-  
+
   // Close the UPD connection
   udp.stop();
 
   // Adjust the time
   time = time - 2208988800UL + TIMEZONE_OFFSET;
-  
+
   // Adjust for DST
   TimeElements current;
   breakTime(time, current);
-  if ((current.Month > DST_START_MONTH && current.Month < DST_END_MONTH) || 
+  if ((current.Month > DST_START_MONTH && current.Month < DST_END_MONTH) ||
       (current.Month == DST_START_MONTH && current.Day >= DST_START_DAY && current.Hour >= DST_START_HOUR) ||
-      (current.Month == DST_END_MONTH && current.Day <= DST_END_DAY && current.Hour < DST_END_HOUR - 
+      (current.Month == DST_END_MONTH && current.Day <= DST_END_DAY && current.Hour < DST_END_HOUR -
       (DST_OFFSET / SECS_PER_HOUR)))
     time = time + DST_OFFSET;
 
   // Log details
   DEBUG_LOG(F("Received/Calculated Unix time: "));
   DEBUG_LOG_LN(time);
-  
+
   return time;
 }
 
@@ -371,7 +371,7 @@ void initializeStuff()
   for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
   {
     // Load the schedule
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i,
       schedule);
 
     // Set the counter
@@ -383,7 +383,7 @@ void initializeStuff()
   for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
   {
     // Load the schedule
-    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
+    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i,
       schedule);
 
     // Set the counter
@@ -396,7 +396,7 @@ void initializeStuff()
   gCurrentColorValues = calcColorValues(time, day, false, prevSchedule);
 
   // Load the previous schedule
-  MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule, 
+  MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule,
       schedule);
 
   // Preapre the IR code array
@@ -442,7 +442,7 @@ byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte da
       count = day * 2;
     else if (time > midnight + schedule.timeSinceMidnight)
       count = day * 2 - 1;
-    else 
+    else
       count = (day - 1) * 2;
   }
   else if (schedule.weekday == MON_TO_FRI)
@@ -457,15 +457,15 @@ byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte da
         count = (day - 1) * 2;
       else if (time > midnight + schedule.timeSinceMidnight)
         count = (day - 1) * 2 - 1;
-      else 
+      else
         count = (day - 2) * 2;
-    }     
+    }
   }
   else if (schedule.weekday == SUN_AND_SAT)
   {
     if (day == SATURDAY)
     {
-      if (time > midnight + schedule.timeSinceMidnight + schedule.duration) 
+      if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
         count = 4;
       else if (time > midnight + schedule.timeSinceMidnight)
         count = 3;
@@ -476,13 +476,13 @@ byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte da
     }
     else // if (day == SUNDAY)
     {
-      if (time > midnight + schedule.timeSinceMidnight + schedule.duration) 
+      if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
         count = 2;
       else if (time > midnight + schedule.timeSinceMidnight)
         count = 1;
     }
   }
-  
+
   return count;
 }
 
@@ -524,7 +524,7 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
     {
       if (time > midnight + schedule.timeSinceMidnight)
         count = day - 1;
-      else 
+      else
         count = day - 2;
     }
   }
@@ -534,7 +534,7 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
     {
       if (time > midnight + schedule.timeSinceMidnight)
         count = 2;
-      else 
+      else
         count = 1;
     }
     else if (day > SUNDAY)
@@ -547,7 +547,7 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
         count = 1;
     }
   }
-  
+
   return count;
 }
 
@@ -564,9 +564,9 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
   for (i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
   {
     // Read the schedule
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i,
         schedule);
-    
+
     // Check if this schedule is active and adjust the schedule's weekday
     if (schedule.weekday == NEVER)
       continue;
@@ -605,12 +605,12 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
     {
       nextSchedule = i;
       nextScheduleStart = start + SECS_PER_WEEK;
-    }   
+    }
   }
 
   // Read the previous or current schedule's color values
   ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
-      EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule), 
+      EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule),
       prevValues);
 
   // Check if we should take the fade into account and if we didn't loop through all the schedules which
@@ -618,11 +618,11 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
   if (includeFade == false || i <= MEMORY_SCHEDULE_COUNT)
   {
     return prevValues;
-  }  
+  }
   else
   {
     // Read the next schedule's color values
-    ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * 
+    ColorValues nextValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
         EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * nextSchedule),
         nextValues);
 
@@ -649,7 +649,7 @@ void inline processWebRequest()
   // Check if there's data available to read from a client
   EthernetClient client = gServer.available();
   if (client)
-  { 
+  {
     // Prepare needed variables
     char character = '\0';
     char prevCharacter = '\0';
@@ -660,7 +660,7 @@ void inline processWebRequest()
     byte stringLength = 0;
 
     // Loop while the client is connected
-    while (client.connected()) 
+    while (client.connected())
     {
       // Check if there's data available to read
       if (client.available())
@@ -669,66 +669,64 @@ void inline processWebRequest()
         prevCharacter = character;
         character = client.read();
 
-        // Log details
-        DEBUG_LOG(F("Read '"));
-        DEBUG_LOG(character);
-        DEBUG_LOG_LN(F("' character from request header"));
-        
         // Check if we're at a seperation point between entries
-        if (character == ' ' && prevCharacter != '\0' && prevCharacter != ' ')
+        if (character == ' ')
         {
           // Increment the space counter
-          ++spacesFound;
+          if (prevCharacter != '\0' && prevCharacter != ' ')
+            ++spacesFound;
         }
         // Check if we're at the end of a line
         else if (character == '\n')
         {
           // Increment the sequencial new line counter
           ++sequencialNewLinesFound;
-          
+
           // Check if we've just finished reading all the headers
           if (sequencialNewLinesFound == 2)
             break;
         }
-        // Check if we're not at the end of a line
-        else if (character != '\r' && character != '\n')
+        else
         {
-          // Reset the sequencial new line counter
-          sequencialNewLinesFound = 0;
+          // Check if we're not at the end of a line
+          if (character != '\r' && character != '\n')
+          {
+            // Reset the sequencial new line counter
+            sequencialNewLinesFound = 0;
+          }
+
+          // Add the character to the string (if we're reading the second entry on the first line)
+          if (spacesFound == 1 && stringLength < URL_MAX_LENGTH - 1)
+          {
+            // Add the character to the string and increase the size counter
+            string[stringLength] = character;
+            ++stringLength;
+          }
         }
-          
-        // Add the character to the string (if we're reading the second entry on the first line)
-        if (spacesFound == 1 && stringLength < URL_MAX_LENGTH - 1)
-        {
-          // Add the character to the string and increase the size counter
-          string[stringLength] = character;
-          ++stringLength;
-        }
-        
-        // Log details
-        DEBUG_LOG(F("String content: "));
-        DEBUG_LOG_LN(string);
       }
     }
-    
+
     // Check if the root is being requested
     if (strcasecmp(string, "/") == 0)
+    {
       strcpy(string, "/index.htm");
-    
+      stringLength = 10;
+    }
+
     // Log details
     DEBUG_LOG(F("URL requested: "));
     DEBUG_LOG_LN(string);
-  
+
     // Check what kind of request this is
     bool responseSent = false;
-    if (strcasecmp(string, "/get?st") == 0 || strcasecmp(string, "/get?cv") == 0 || 
+    if (strcasecmp(string, "/get?st") == 0 || strcasecmp(string, "/get?cv") == 0 ||
         strcasecmp(string, "/get?ms") == 0 || strcasecmp(string, "/get?ts") == 0)
     {
       // Send the headers
       client.println(F("HTTP/1.1 200 OK"));
       client.println(F("Content-Type: application/octet-stream"));
       client.println(F("Connection: close\n"));
-    
+
       // Figure out which data is being requested
       if (strcasecmp(string, "/get?st") == 0) // st = status
       {
@@ -755,7 +753,7 @@ void inline processWebRequest()
       }
       /* else */ if (strcasecmp(string, "/get?ts") == 0) // ts = timer schedules
       {
-        // Send the data 
+        // Send the data
         for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
         {
           client.write(EEPROM.read(i));
@@ -763,7 +761,7 @@ void inline processWebRequest()
       }
 
       // Set the response sent flag
-      responseSent = true; 
+      responseSent = true;
     }
     else if (strcasecmp(string, "/set?cv") == 0) // cv = color values
     {
@@ -812,7 +810,7 @@ void inline processWebRequest()
       // Set the reboot flag
       gReboot = true;
     }
-    else 
+    else
     {
       // Open the requested file
       File file = SD.open(string);
@@ -820,14 +818,14 @@ void inline processWebRequest()
       {
         // Figure out the content type
         const __FlashStringHelper* type;
-        if (strcasecmp((char *)string[stringLength - 4], ".htm") == 0)
+        if (strcasecmp((char *)&string[stringLength - 4], ".htm") == 0)
           type = F("text/html");
-        /* else */ if (strcasecmp((char*)string[stringLength - 4], ".css") == 0)
+        /* else */ if (strcasecmp((char*)&string[stringLength - 4], ".css") == 0)
           type = F("text/css");
-        /* else */ if (strcasecmp((char*)string[stringLength - 3], ".js") == 0)
+        /* else */ if (strcasecmp((char*)&string[stringLength - 3], ".js") == 0)
           type = F("text/javascript");
-        /* else */ if (strcasecmp((char *)string[stringLength - 4], ".png") == 0)
-          type = F("image/png");      
+        /* else */ if (strcasecmp((char *)&string[stringLength - 4], ".png") == 0)
+          type = F("image/png");
 
         // Send the file
         client.println(F("HTTP/1.1 200 OK"));
@@ -838,11 +836,17 @@ void inline processWebRequest()
         {
           client.write(file.read());
         }
-        file.close();   
+        file.close();
 
         // Set the response sent flag
         responseSent = true;
-      }  
+      }
+      else
+      {
+        // Log details
+        DEBUG_LOG(F("Failed to open file "));
+        DEBUG_LOG_LN(string);
+      }
     }
 
     // Check if we still need to send a response
@@ -888,7 +892,7 @@ void loop()
     // Clear the counters
     memset(&gMemoryScheduleCounters, 0, sizeof(byte) * MEMORY_SCHEDULE_COUNT / 2);
     memset(&gTimerScheduleCounters, 0, sizeof(unsigned short) * TIMER_SCHEDULE_COUNT / 5);
-    
+
     // Set the new time for clearing the counters
     gClearScheduleCountersTime = nextSunday(time);
   }
@@ -902,7 +906,7 @@ void loop()
   for (byte i = 0; i < MEMORY_SCHEDULE_COUNT; ++i)
   {
     // Load the schedule
-    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i, 
+    MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * i,
       schedule);
 
     // Load the count for this shedule
@@ -924,19 +928,19 @@ void loop()
 
   // Prepare the IR code array
   FLASH_ARRAY(unsigned short, timerIRCodes, ECO_SET_CLOCK_CODE, ECO_ON_TIME_CODE, ECO_OFF_TIME_CODE,
-      ECO_POWER_CODE, ECO_HOUR_UP_CODE, ECO_MINUTE_DOWN_CODE, ECO_ENTER_CODE, ECO_RESUME_CODE, 
-      ECO_SUNLIGHT_CODE, ECO_FULL_SPECTRUM_CODE, ECO_CRISP_BLUE_CODE, ECO_DEEP_WATER_CODE, 
+      ECO_POWER_CODE, ECO_HOUR_UP_CODE, ECO_MINUTE_DOWN_CODE, ECO_ENTER_CODE, ECO_RESUME_CODE,
+      ECO_SUNLIGHT_CODE, ECO_FULL_SPECTRUM_CODE, ECO_CRISP_BLUE_CODE, ECO_DEEP_WATER_CODE,
       ECO_RED_UP_CODE, ECO_GREEN_UP_CODE, ECO_BLUE_UP_CODE, ECO_WHITE_UP_CODE, ECO_RED_DOWN_CODE,
       ECO_GREEN_DOWN_CODE, ECO_BLUE_DOWN_CODE, ECO_WHITE_DOWN_CODE, ECO_M1_CODE, ECO_M2_CODE,
-      ECO_DAYLIGHT_CODE, ECO_MOONLIGHT_CODE, ECO_DYNAMIC_MOON_CODE, ECO_DYNAMIC_LIGHTNING_CODE, 
-      ECO_DYNAMIC_CLOUD_CODE, ECO_DYNAMIC_DAWN_DUSK_CODE, SATPP_SET_CLOCK_CODE, SATPP_ON_TIME_CODE, 
-      SATPP_OFF_TIME_CODE, SATPP_POWER_CODE, SATPP_HOUR_UP_CODE, SATPP_MINUTE_DOWN_CODE, 
+      ECO_DAYLIGHT_CODE, ECO_MOONLIGHT_CODE, ECO_DYNAMIC_MOON_CODE, ECO_DYNAMIC_LIGHTNING_CODE,
+      ECO_DYNAMIC_CLOUD_CODE, ECO_DYNAMIC_DAWN_DUSK_CODE, SATPP_SET_CLOCK_CODE, SATPP_ON_TIME_CODE,
+      SATPP_OFF_TIME_CODE, SATPP_POWER_CODE, SATPP_HOUR_UP_CODE, SATPP_MINUTE_DOWN_CODE,
       SATPP_ENTER_CODE, SATPP_RESUME_CODE, SATPP_SUNLIGHT_CODE, SATPP_FULL_SPECTRUM_CODE,
       SATPP_CRISP_BLUE_CODE, SATPP_DEEP_WATER_CODE, SATPP_RED_UP_CODE, SATPP_GREEN_UP_CODE,
-      SATPP_BLUE_UP_CODE, SATPP_WHITE_UP_CODE, SATPP_RED_DOWN_CODE, SATPP_GREEN_DOWN_CODE, 
-      SATPP_BLUE_DOWN_CODE, SATPP_WHITE_DOWN_CODE, SATPP_M1_CODE, SATPP_M2_CODE, SATPP_DAYLIGHT_CODE, 
+      SATPP_BLUE_UP_CODE, SATPP_WHITE_UP_CODE, SATPP_RED_DOWN_CODE, SATPP_GREEN_DOWN_CODE,
+      SATPP_BLUE_DOWN_CODE, SATPP_WHITE_DOWN_CODE, SATPP_M1_CODE, SATPP_M2_CODE, SATPP_DAYLIGHT_CODE,
       SATPP_MOONLIGHT_CODE, SATPP_DYNAMIC_MOON_1_CODE, SATPP_DYNAMIC_MOON_2_CODE, SATPP_DYNAMIC_CLOUD_CODE,
-      SATPP_DYNAMIC_DAWN_DUSK_CODE, SATPP_DYNAMIC_STORM_1_CODE, SATPP_DYNAMIC_STORM_2_CODE, SATPP_DYNAMIC_STORM_3_CODE, 
+      SATPP_DYNAMIC_DAWN_DUSK_CODE, SATPP_DYNAMIC_STORM_1_CODE, SATPP_DYNAMIC_STORM_2_CODE, SATPP_DYNAMIC_STORM_3_CODE,
       SATPP_DYNAMIC_STORM_4_CODE, SATP_ORANGE_CODE, SATP_BLUE_CODE, SATP_ROSE_CODE, SATP_POWER_CODE,
       SATP_WHITE_CODE, SATP_FULL_SPEC_CODE, SATP_PURPLE_CODE, SATP_PLAY_PAUSE_CODE, SATP_RED_UP_CODE,
       SATP_GREEN_UP_CODE, SATP_BLUE_UP_CODE, SATP_WHITE_UP_CODE, SATP_RED_DOWN_CODE, SATP_GREEN_DOWN_CODE,
@@ -949,7 +953,7 @@ void loop()
   for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
   {
     // Load the schedule
-    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i, 
+    TimerSchedule schedule = EEPROM.get(TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * i,
       schedule);
 
     // Load the count for this shedule
@@ -962,11 +966,11 @@ void loop()
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | timerIRCodes[schedule.button], 32);
       delay(333);
-      
-      // Increment the counter   
+
+      // Increment the counter
       gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
-          (++count << (i % 5) * 3);   
-    }  
+          (++count << (i % 5) * 3);
+    }
   }
 
   // Calculate the current color values
