@@ -51,7 +51,7 @@ $(document).ready(function()
 
   // Send the AJAX request
   $.ajax({
-    url: "/getms",
+    url: "/get?ms",
     type: "GET",
     dataType: "arraybuffer",
     processData: "false"
@@ -158,8 +158,8 @@ $(document).ready(function()
 
     // Send the data
     $.ajax({
-      url: "/setms",
-      type: "GET",
+      url: "/set?ms",
+      type: "POST",
       dataType: "arraybuffer",
       processData: "false",
       data: data

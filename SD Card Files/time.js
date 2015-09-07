@@ -45,7 +45,7 @@ $(document).ready(function()
 
   // Send the AJAX request
   $.ajax({
-    url: "/getts",
+    url: "/get?ts",
     type: "GET",
     dataType: "arraybuffer",
     processData: "false"
@@ -127,8 +127,8 @@ $(document).ready(function()
 
     // Send the data
     $.ajax({
-      url: "/setts",
-      type: "GET",
+      url: "/set?ts",
+      type: "POST",
       dataType: "arraybuffer",
       processData: "false",
       data: data

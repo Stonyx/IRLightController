@@ -17,7 +17,7 @@ $(document).ready(function()
 
   // Send the AJAX request
   $.ajax({
-    url: "/getst",
+    url: "/get?st",
     type: "GET",
     dataType: "arraybuffer",
     processData: "false"

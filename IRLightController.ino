@@ -831,6 +831,7 @@ void inline processWebRequest()
         client.println(F("HTTP/1.1 200 OK"));
         client.print(F("Content-Type: "));
         client.println(type);
+        client.println(F("Cache-Control: max-age=604800"));
         client.println(F("Connection: close\n"));
         while (file.available())
         {
@@ -841,12 +842,14 @@ void inline processWebRequest()
         // Set the response sent flag
         responseSent = true;
       }
+      #ifdef DEBUG
       else
       {
         // Log details
         DEBUG_LOG(F("Failed to open file "));
         DEBUG_LOG_LN(string);
       }
+      #endif
     }
 
     // Check if we still need to send a response

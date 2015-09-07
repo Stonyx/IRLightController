@@ -17,7 +17,7 @@ $(document).ready(function()
 
   // Send the AJAX request
   $.ajax({
-    url: "/getcv",
+    url: "/get?cv",
     type: "GET",
     dataType: "arraybuffer",
     processData: "false"
@@ -84,8 +84,8 @@ $(document).ready(function()
 
     // Send the data
     $.ajax({
-      url: "/setcv",
-      type: "GET",
+      url: "/set?cv",
+      type: "POST",
       dataType: "arraybuffer",
       processData: "false",
       data: data
