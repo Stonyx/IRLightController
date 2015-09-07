@@ -659,6 +659,9 @@ void inline processWebRequest()
     memset(&string, 0, URL_MAX_LENGTH);
     byte stringLength = 0;
 
+    // Log details
+    DEBUG_LOG_LN(F("\nReceived the following request: "));
+
     // Loop while the client is connected
     while (client.connected())
     {
@@ -668,6 +671,9 @@ void inline processWebRequest()
         // Read a character
         prevCharacter = character;
         character = client.read();
+        
+        // Log details
+        DEBUG_LOG(character);
 
         // Check if we're at a seperation point between entries
         if (character == ' ')
@@ -846,7 +852,7 @@ void inline processWebRequest()
       else
       {
         // Log details
-        DEBUG_LOG(F("Failed to open file "));
+        DEBUG_LOG(F("Failed to open file: "));
         DEBUG_LOG_LN(string);
       }
       #endif

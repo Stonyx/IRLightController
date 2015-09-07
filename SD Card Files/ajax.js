@@ -9,7 +9,7 @@
 //
 // This software is provided "as is" without express or implied warranty.
 
-// Register an AJAX transport for receiving array buffer data
+// Register an AJAX transport for sending array buffer data
 $.ajaxTransport("+*", function(options, originalOptions, jqXHR)
 {
   // Check if the data type is set to an array buffer
@@ -30,10 +30,11 @@ $.ajaxTransport("+*", function(options, originalOptions, jqXHR)
           completeCallback(xhr.status, xhr.statusText, response, xhr.getAllResponseHeaders());
         });
 
-        // Send the request
+        // Send the request (using the data from the original options object to avoid any
+        //   possible changes to the data by jQuery)
         xhr.open(options.type, options.url, options.async);
         xhr.responseType = options.dataType;
-        xhr.send();
+        xhr.send(originalOptions.data);
       },
       abort: function()
       {
