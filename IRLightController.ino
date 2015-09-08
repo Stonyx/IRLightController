@@ -250,10 +250,10 @@ void setup()
 
   // Start the time sync
   DEBUG_LOG_LN(F("Synching time with NTP server ..."));
-  setSyncProvider(&getNtpTime);
   setSyncInterval(30);
-  while (timeStatus() == timeNotSet);
+  setSyncProvider(&getNtpTime);
   setSyncInterval(3600);
+  while (timeStatus() == timeNotSet);
 
   // Setup the schedule counters
   DEBUG_LOG_LN("Initializing stuff ...");
@@ -588,7 +588,7 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
       prevOrCurrentSchedule = i;
       break;
     }
-    
+
     // Check if this schedule has already stopped and if it's the closest previous schedule
     if (time > stop && stop > prevScheduleStop)
     {
@@ -600,7 +600,7 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
       prevOrCurrentSchedule = i;
       prevScheduleStop = stop - SECS_PER_WEEK;
     }
-   
+  
     // Check if this schedule hasn't started yet and if it's the closest next schedule
     if (time < start && start < nextScheduleStart)
     {
@@ -994,7 +994,7 @@ void loop()
     }
   }
 
-  // Calculate the what the current color values should be
+  // Calculate what the current color values should be
   byte prevOrCurrentSchedule;
   ColorValues calcValues = calcColorValues(time, day, true, prevOrCurrentSchedule);
 
