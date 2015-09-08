@@ -39,8 +39,8 @@
 #define SD_CARD_PIN 4
 #define ETHERNET_PIN 10
 #define NTP_MAX_POLLS 10
-#define NTP_POLL_INTERVAL 150 // In milliseconds
-#define TIMEZONE_OFFSET (4 * SECS_PER_HOUR) // In seconds
+#define NTP_POLL_INTERVAL 1000 // In milliseconds
+#define TIMEZONE_OFFSET (-5 * SECS_PER_HOUR) // In seconds
 #define DST_START_MONTH 3
 #define DST_START_DAY (14 - ((1 + current.Year * 5 / 4) % 7))
 #define DST_START_HOUR 2
@@ -210,7 +210,7 @@ static bool gReboot = false;
 // Declare functions
 unsigned long getNtpTime();
 void initializeStuff();
-ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevSchedule);
+ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevOrCurrentSchedule);
 byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte day, MemorySchedule schedule);
 byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day, TimerSchedule schedule);
 void inline processWebRequest();
@@ -251,8 +251,9 @@ void setup()
   // Start the time sync
   DEBUG_LOG_LN(F("Synching time with NTP server ..."));
   setSyncProvider(&getNtpTime);
-  setSyncInterval(3600);
+  setSyncInterval(30);
   while (timeStatus() == timeNotSet);
+  setSyncInterval(3600);
 
   // Setup the schedule counters
   DEBUG_LOG_LN("Initializing stuff ...");
@@ -312,7 +313,7 @@ unsigned long getNtpTime()
     if ((size = udp.parsePacket()) >= 48)
       break;
 
-    // Delay 150ms
+    // Delay
     delay(NTP_POLL_INTERVAL);
   }
 
@@ -392,17 +393,20 @@ void initializeStuff()
   }
 
   // Set the current color values
-  byte prevSchedule;
-  gCurrentColorValues = calcColorValues(time, day, false, prevSchedule);
+  byte prevOrCurrentSchedule;
+  gCurrentColorValues = calcColorValues(time, day, false, prevOrCurrentSchedule);
 
   // Load the previous schedule
-  MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule,
+  MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevOrCurrentSchedule,
       schedule);
 
   // Preapre the IR code array
   FLASH_ARRAY(unsigned short, memoryIRCodes, ECO_POWER_CODE, ECO_M1_CODE, ECO_M2_CODE, ECO_DAYLIGHT_CODE,
       ECO_MOONLIGHT_CODE, SATPP_POWER_CODE, SATPP_M1_CODE, SATPP_M2_CODE, SATPP_DAYLIGHT_CODE,
       SATPP_MOONLIGHT_CODE, SATP_POWER_CODE, SATP_M1_CODE, SATP_M2_CODE, SATP_M3_CODE, SATP_M4_CODE);
+
+  // Log details
+  DEBUG_LOG_LN(F("Sending IR signal for previous or current schedule"));
 
   // Send the IR signal
   IRsend irSend;
@@ -552,12 +556,12 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
 }
 
 // Function called to calculate what the current color values should be
-ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevSchedule)
+ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevOrCurrentSchedule)
 {
   // Prepare needed variables
   unsigned long prevScheduleStop = 0;
   byte nextSchedule;
-  unsigned long nextScheduleStart = -1;
+  unsigned long nextScheduleStart = 0xFFFFFFFF;
 
   // Loop through the memory schedules
   byte i;
@@ -575,28 +579,30 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
       schedule.weekday = day;
 
     // Cacluate this schedule's start and stop times
-    unsigned long start = previousMidnight(time - (day - schedule.weekday) * SECS_PER_DAY) + schedule.timeSinceMidnight;
+    unsigned long start = previousMidnight((time - (day - schedule.weekday) * SECS_PER_DAY)) + schedule.timeSinceMidnight;
     unsigned long stop = start + schedule.duration;
 
     // Check if this schedule is currently running
     if (time > start && time < stop)
     {
-      prevSchedule = i;
+      prevOrCurrentSchedule = i;
       break;
     }
+    
     // Check if this schedule has already stopped and if it's the closest previous schedule
-    else if (time > stop && stop > prevScheduleStop)
+    if (time > stop && stop > prevScheduleStop)
     {
-      prevSchedule = i;
+      prevOrCurrentSchedule = i;
       prevScheduleStop = stop;
     }
     else if (time > stop - SECS_PER_WEEK && stop - SECS_PER_WEEK > prevScheduleStop)
     {
-      prevSchedule = i;
+      prevOrCurrentSchedule = i;
       prevScheduleStop = stop - SECS_PER_WEEK;
     }
+   
     // Check if this schedule hasn't started yet and if it's the closest next schedule
-    else if (time < start && start < nextScheduleStart)
+    if (time < start && start < nextScheduleStart)
     {
       nextSchedule = i;
       nextScheduleStart = start;
@@ -610,12 +616,12 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
 
   // Read the previous or current schedule's color values
   ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
-      EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevSchedule),
+      EEPROM.read(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevOrCurrentSchedule),
       prevValues);
 
   // Check if we should take the fade into account and if we didn't loop through all the schedules which
   //   means one of them is currently running
-  if (includeFade == false || i <= MEMORY_SCHEDULE_COUNT)
+  if (includeFade == false || i < MEMORY_SCHEDULE_COUNT)
   {
     return prevValues;
   }
@@ -687,20 +693,20 @@ void inline processWebRequest()
         }
         
         // Check if we're not at the end of a line
-        if (character != '\n' && character != '\r')
+        /* else */ if (character != '\n' && character != '\r')
         {
           // Reset the sequencial new line counter
           sequencialNewLinesFound = 0;
         }
           
-        // Check if we're at a seperation point between entries
+        // Check if we're at a seperation point between entries ...
         if (character == ' ')
         {
           // Increment the space counter
           if (prevCharacter != '\0' && prevCharacter != ' ')
             ++spacesFound;
         }
-        // Check if we're reading the second entry on the first line
+        // ... or if we're reading the second entry on the first line
         else if (spacesFound == 1 && stringLength < URL_MAX_LENGTH - 1)
         {
           // Add the character to the string and increase the size counter
@@ -922,6 +928,10 @@ void loop()
     // Check if it's time to run this schedule
     if (count < calcMemoryScheduleCount(time, midnight, day, schedule))
     {
+      // Log details
+      DEBUG_LOG(F("Sending IR signal for schedule: "));
+      DEBUG_LOG_LN(i);
+      
       // Send the IR signal
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | memoryIRCodes[schedule.button], 32);
@@ -969,6 +979,10 @@ void loop()
     // Check if it's time to run this schedule
     if (count < calcTimerScheduleCount(time, midnight, day, schedule))
     {
+      // Log details
+      DEBUG_LOG(F("Sending IR signal for timer: "));
+      DEBUG_LOG_LN(i);
+      
       // Send the IR signal
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | timerIRCodes[schedule.button], 32);
@@ -980,9 +994,9 @@ void loop()
     }
   }
 
-  // Calculate the current color values
-  byte prevSchedule;
-  ColorValues calcValues = calcColorValues(time, day, true, prevSchedule);
+  // Calculate the what the current color values should be
+  byte prevOrCurrentSchedule;
+  ColorValues calcValues = calcColorValues(time, day, true, prevOrCurrentSchedule);
 
   // Prepare the IR code array
   FLASH_ARRAY(unsigned short, irCodes, ECO_RED_UP_CODE, ECO_RED_DOWN_CODE, ECO_GREEN_UP_CODE, ECO_GREEN_DOWN_CODE,
@@ -995,16 +1009,24 @@ void loop()
   for (byte i = 0; i < 4; ++i)
   {
     // Check if we have to adjust the colors
-    if (((byte *)&calcValues)[i] < ((byte *)&gCurrentColorValues)[i])
+    if (((byte *)&calcValues)[i] > ((byte *)&gCurrentColorValues)[i])
     {
+      // Log details
+      DEBUG_LOG(F("Sending IR signal to increase color: "));
+      DEBUG_LOG_LN(i);
+      
       // Send the IR code, wait, and adjust the current color value
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | irCodes[i * 2], 32);
       delay(333);
       ++((byte*)&gCurrentColorValues)[i];
     }
-    else if (((byte *)&calcValues)[i] > ((byte*)&gCurrentColorValues)[i])
+    else if (((byte *)&calcValues)[i] < ((byte*)&gCurrentColorValues)[i])
     {
+      // Log details
+      DEBUG_LOG(F("Sending IR signal to decrease color: "));
+      DEBUG_LOG_LN(i);
+
       // Send the IR code, wait, and adjust the current color value
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | irCodes[i * 2 + 1], 32);
