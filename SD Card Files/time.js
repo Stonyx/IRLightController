@@ -90,7 +90,7 @@ $(document).ready(function()
     $("#ajax-loader").hide();
 
     // Show the error message
-    alert("Failed to retrieve timer schedules.")
+    alert("Failed to retrieve timer schedules (" + textStatus + " - " + errorThrown + ").")
   });
 
   // Attach to the Save button
@@ -147,7 +147,7 @@ $(document).ready(function()
       $("#ajax-loader").hide();
 
       // Show the error message
-      alert("Failed to save timer schedules.")
+      alert("Failed to save timer schedules (" + textStatus + " - " + errorThrown + ").")
     });
   });
 });

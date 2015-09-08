@@ -65,6 +65,6 @@ $(document).ready(function()
     $("#ajax-loader").hide();
 
     // Show the error message
-    alert("Failed to retrieve time and color values.");
+    alert("Failed to retrieve time and color values (" + textStatus + " - " + errorThrown + ").");
   });
 });

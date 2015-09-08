@@ -53,7 +53,7 @@ $(document).ready(function()
     $("#ajax-loader").hide();
 
     // Show the error message
-    alert("Failed to retrieve color values.")
+    alert("Failed to retrieve color values (" + textStatus + " - " + errorThrown + ").")
   });
 
   // Attach to the Save button
@@ -104,7 +104,7 @@ $(document).ready(function()
       $("#ajax-loader").hide();
 
       // Show the error message
-      alert("Failed to save color values.");
+      alert("Failed to save color values (" + textStatus + " - " + errorThrown + ").");
     });
   });
 });

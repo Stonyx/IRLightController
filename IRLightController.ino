@@ -675,6 +675,24 @@ void inline processWebRequest()
         // Log details
         DEBUG_LOG(character);
 
+        // Check if we're at the end of a line
+        if (character == '\n')
+        {
+           // Increment the sequencial new line counter
+          ++sequencialNewLinesFound;
+
+          // Check if we've just finished reading all the headers
+          if (sequencialNewLinesFound == 2)
+            break;
+        }
+        
+        // Check if we're not at the end of a line
+        if (character != '\n' && character != '\r')
+        {
+          // Reset the sequencial new line counter
+          sequencialNewLinesFound = 0;
+        }
+          
         // Check if we're at a seperation point between entries
         if (character == ' ')
         {
@@ -682,32 +700,12 @@ void inline processWebRequest()
           if (prevCharacter != '\0' && prevCharacter != ' ')
             ++spacesFound;
         }
-        // Check if we're at the end of a line
-        else if (character == '\n')
+        // Check if we're reading the second entry on the first line
+        else if (spacesFound == 1 && stringLength < URL_MAX_LENGTH - 1)
         {
-          // Increment the sequencial new line counter
-          ++sequencialNewLinesFound;
-
-          // Check if we've just finished reading all the headers
-          if (sequencialNewLinesFound == 2)
-            break;
-        }
-        else
-        {
-          // Check if we're not at the end of a line
-          if (character != '\r' && character != '\n')
-          {
-            // Reset the sequencial new line counter
-            sequencialNewLinesFound = 0;
-          }
-
-          // Add the character to the string (if we're reading the second entry on the first line)
-          if (spacesFound == 1 && stringLength < URL_MAX_LENGTH - 1)
-          {
-            // Add the character to the string and increase the size counter
-            string[stringLength] = character;
-            ++stringLength;
-          }
+          // Add the character to the string and increase the size counter
+          string[stringLength] = character;
+          ++stringLength;
         }
       }
     }

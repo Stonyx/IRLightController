@@ -110,7 +110,7 @@ $(document).ready(function()
     $("#ajax-loader").hide();
 
     // Show the error message
-    alert("Failed to retrieve memory schedules.")
+    alert("Failed to retrieve memory schedules (" + textStatus + " - " + errorThrown + ").")
   });
 
   // Attach to the Save button
@@ -178,7 +178,7 @@ $(document).ready(function()
       $("#ajax-loader").hide();
 
       // Show the error message
-      alert("Failed to save memory schedules.");
+      alert("Failed to save memory schedules (" + textStatus + " - " + errorThrown + ").");
     });
   });
 });

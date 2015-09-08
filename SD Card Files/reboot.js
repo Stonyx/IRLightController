@@ -41,7 +41,7 @@ $(document).ready(function()
       $("#ajax-loader").hide();
 
       // Show the error message
-      alert("Failed to trigger reboot.");
+      alert("Failed to trigger reboot (" + textStatus + " - " + errorThrown + ").");
     });
   });
 });
