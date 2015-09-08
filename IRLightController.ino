@@ -250,10 +250,10 @@ void setup()
 
   // Start the time sync
   DEBUG_LOG_LN(F("Synching time with NTP server ..."));
-  setSyncInterval(30);
   setSyncProvider(&getNtpTime);
-  setSyncInterval(3600);
+  setSyncInterval(30);
   while (timeStatus() == timeNotSet);
+  setSyncInterval(3600);
 
   // Setup the schedule counters
   DEBUG_LOG_LN("Initializing stuff ...");
@@ -600,7 +600,7 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
       prevOrCurrentSchedule = i;
       prevScheduleStop = stop - SECS_PER_WEEK;
     }
-  
+
     // Check if this schedule hasn't started yet and if it's the closest next schedule
     if (time < start && start < nextScheduleStart)
     {
