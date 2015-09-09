@@ -325,7 +325,7 @@ unsigned long getNtpTime()
     if ((size = udp.parsePacket()) >= 48)
       break;
 
-    // Delay before checking again
+    // Wait before checking again
     delay(NTP_POLL_INTERVAL);
   }
 
@@ -532,12 +532,18 @@ byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte da
 {
   // Calculate how many times this schedule should have run already this week
   byte count = 0;
-  if (schedule.weekday == NEVER)
+  switch (schedule.weekday)
   {
+  case NEVER:
     count = 0;
-  }
-  else if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
-  {
+    break;
+  case SUNDAY:
+  case MONDAY:
+  case TUESDAY:
+  case WEDNESDAY:
+  case THURSDAY:
+  case FRIDAY:
+  case SATURDAY:
     if (day > schedule.weekday)
     {
       count = 2;
@@ -549,23 +555,21 @@ byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte da
       else if (time > midnight + schedule.timeSinceMidnight)
         count = 1;
     }
-  }
-  else if (schedule.weekday == EVERYDAY)
-  {
+    break;
+  case EVERYDAY:
     if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
       count = day * 2;
     else if (time > midnight + schedule.timeSinceMidnight)
       count = day * 2 - 1;
     else
       count = (day - 1) * 2;
-  }
-  else if (schedule.weekday == MON_TO_FRI)
-  {
+    break;
+  case MON_TO_FRI:
     if (day == SATURDAY)
     {
       count = 10;
     }
-    else if (day >= MONDAY /* && day <= FRIDAY*/)
+    else if (day >= MONDAY /* && day <= FRIDAY */)
     {
       if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
         count = (day - 1) * 2;
@@ -574,9 +578,8 @@ byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte da
       else
         count = (day - 2) * 2;
     }
-  }
-  else if (schedule.weekday == SUN_AND_SAT)
-  {
+    break;
+  default: // SUN_AND_SAT
     if (day == SATURDAY)
     {
       if (time > midnight + schedule.timeSinceMidnight + schedule.duration)
@@ -605,12 +608,18 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
 {
   // Calculate how many times this schedule should have run already this week
   byte count = 0;
-  if (schedule.weekday == NEVER)
+  switch (schedule.weekday)
   {
+  case NEVER:
     count = 0;
-  }
-  else if (schedule.weekday >= SUNDAY && schedule.weekday <= SATURDAY)
-  {
+    break;
+  case SUNDAY:
+  case MONDAY:
+  case TUESDAY:
+  case WEDNESDAY:
+  case THURSDAY:
+  case FRIDAY:
+  case SATURDAY:
     if (day > schedule.weekday)
     {
       count = 1;
@@ -620,30 +629,27 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
       if (time > midnight + schedule.timeSinceMidnight)
         count = 1;
     }
-  }
-  else if (schedule.weekday == EVERYDAY)
-  {
+    break;
+  case EVERYDAY:
     if (time > midnight + schedule.timeSinceMidnight)
       count = day;
     else
       count = day - 1;
-  }
-  else if (schedule.weekday == MON_TO_FRI)
-  {
+    break;
+  case MON_TO_FRI:
     if (day == SATURDAY)
     {
       count = 5;
     }
-    else if (day >= MONDAY /* && day <= FRIDAY*/)
+    else if (day >= MONDAY /* && day <= FRIDAY */)
     {
       if (time > midnight + schedule.timeSinceMidnight)
         count = day - 1;
       else
         count = day - 2;
     }
-  }
-  else if (schedule.weekday == SUN_AND_SAT)
-  {
+    break;
+  default: // SUN_AND_SAT
     if (day == SATURDAY)
     {
       if (time > midnight + schedule.timeSinceMidnight)
