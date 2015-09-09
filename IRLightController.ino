@@ -40,14 +40,6 @@
 #define ETHERNET_PIN 10
 #define NTP_MAX_POLLS 10
 #define NTP_POLL_INTERVAL 1000 // In milliseconds
-#define TIMEZONE_OFFSET (-5 * SECS_PER_HOUR) // In seconds
-#define DST_START_MONTH 3
-#define DST_START_DAY (14 - ((1 + current.Year * 5 / 4) % 7))
-#define DST_START_HOUR 2
-#define DST_OFFSET (1 * SECS_PER_HOUR) // In seconds
-#define DST_END_MONTH 11
-#define DST_END_DAY (7 - ((1 + current.Year * 5 / 4) % 7))
-#define DST_END_HOUR 2
 #define URL_MAX_LENGTH 50
 
 // Define IR code prefix
@@ -170,7 +162,11 @@
 #define TIMER_SCHEDULE_COUNT 50 // Must be multiples of 5
 
 // Define EEPROM locations
-#define COLOR_VALUES_LOCATION_BEGIN 0
+#define ADDRESSES_LOCATION_BEGIN 0
+#define ADDRESSES_LOCATION_END (ADDRESSES_LOCATION_BEGIN + 6 + 4 * 4) // Six byte MAC address plus four 4 byte IP addresses
+#define TIME_ZONE_LOCATION_BEGIN ADDRESSES_LOCATION_END
+#define TIME_ZONE_LOCATION_END (TIME_ZONE_LOCATION_BEGIN + sizeof(TimeZone))
+#define COLOR_VALUES_LOCATION_BEGIN TIME_ZONE_LOCATION_END
 #define COLOR_VALUES_LOCATION_END (COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) * COLOR_VALUES_COUNT)
 #define MEMORY_SCHEDULE_LOCATION_BEGIN COLOR_VALUES_LOCATION_END
 #define MEMORY_SCHEDULE_LOCATION_END (MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * MEMORY_SCHEDULE_COUNT)
@@ -178,6 +174,19 @@
 #define TIMER_SCHEDULE_LOCATION_END (TIMER_SCHEDULE_LOCATION_BEGIN + sizeof(TimerSchedule) * TIMER_SCHEDULE_COUNT)
 
 // Define Structures
+struct TimeZone
+{
+  signed short offset; // In minutes
+  byte dstStartMonth; // 0: Janary ... 11: December
+  byte dstStartWeekday; // 0: Sunday ... 6: Saturday
+  byte dstStartWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
+  byte dstStartHour;
+  signed short dstOffset; // In minutes
+  byte dstEndMonth; // 0: Janary ... 11: December
+  byte dstEndWeekday; // 0: Sunday ... 6: Saturday
+  byte dstEndWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
+  byte dstEndHour;
+};
 struct ColorValues
 {
   byte red;
@@ -209,6 +218,8 @@ static bool gReboot = false;
 
 // Declare functions
 unsigned long getNtpTime();
+byte calcDSTMonthOffset(byte month, byte weekdayNumber);
+byte calcMonthDays(unsigned short year, byte month);
 void initializeStuff();
 ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevOrCurrentSchedule);
 byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte day, MemorySchedule schedule);
@@ -234,16 +245,17 @@ void setup()
   if (!SD.begin(SD_CARD_PIN))
     DEBUG_LOG_LN(F("Failed to start SD card"));
 
+  // Get the various ethernet addresses
+  byte addresses[ADDRESSES_LOCATION_END - ADDRESSES_LOCATION_BEGIN];
+  for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < ADDRESSES_LOCATION_END; ++i)
+  {
+    addresses[i] = EEPROM.read(i);
+  }
+
   // Start the ethernet
   DEBUG_LOG_LN(F("Starting ethernet ..."));
-  uint8_t mac[] = { 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90 };
-  #ifdef DEBUG
-  Ethernet.begin(mac, IPAddress(192, 168, 1, 254), IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-  #else
-  if (!Ethernet.begin(mac))
-    DEBUG_LOG_LN(F("Failed to start ethernet"));
-  #endif
-
+  Ethernet.begin(addresses, &addresses[6], &addresses[6 + 4], &addresses[6 + 4 * 2], &addresses[6 + 4 * 3]);
+  
   // Start the server
   DEBUG_LOG_LN(F("Starting server ..."));
   gServer.begin();
@@ -313,7 +325,7 @@ unsigned long getNtpTime()
     if ((size = udp.parsePacket()) >= 48)
       break;
 
-    // Delay
+    // Delay before checking again
     delay(NTP_POLL_INTERVAL);
   }
 
@@ -341,23 +353,121 @@ unsigned long getNtpTime()
   // Close the UPD connection
   udp.stop();
 
-  // Adjust the time
-  time = time - 2208988800UL + TIMEZONE_OFFSET;
-
-  // Adjust for DST
+  // Get the current time elements
   TimeElements current;
   breakTime(time, current);
-  if ((current.Month > DST_START_MONTH && current.Month < DST_END_MONTH) ||
-      (current.Month == DST_START_MONTH && current.Day >= DST_START_DAY && current.Hour >= DST_START_HOUR) ||
-      (current.Month == DST_END_MONTH && current.Day <= DST_END_DAY && current.Hour < DST_END_HOUR -
-      (DST_OFFSET / SECS_PER_HOUR)))
-    time = time + DST_OFFSET;
+
+  // Load the time zone and DST information
+  TimeZone timeZone = EEPROM.get(TIME_ZONE_LOCATION_BEGIN, timeZone);
+  byte dstStartDay = (timeZone.dstStartWeekdayNumber < 4 ? timeZone.dstStartWeekdayNumber * 7 : calcMonthDays(current.Year, current.Month)) - 
+      ((calcDSTMonthOffset(current.Month, timeZone.dstStartWeekdayNumber) + timeZone.dstStartWeekday + 
+      /* six days per year minus one day per leap year -> current.Year * 6 - current.Year / 4 == current.Year * 5 / 4 */ current.Year * 5 / 4) % 7);
+  byte dstEndDay = (timeZone.dstEndWeekdayNumber < 4 ? timeZone.dstEndWeekdayNumber * 7 : calcMonthDays(current.Year, current.Month)) -
+      ((calcDSTMonthOffset(current.Month, timeZone.dstEndWeekdayNumber) + timeZone.dstEndWeekday + 
+      /* six days per year minus one day per leap year -> current.Year * 6 - current.Year / 4 == current.Year * 5 / 4 */ current.Year * 5 / 4) % 7);  
+ 
+  // Adjust the time for epoch and time zone
+  time = time - 2208988800UL + timeZone.offset * 60;
+
+  // Adjust the time for DST
+  if ((current.Month > timeZone.dstStartMonth && current.Month < timeZone.dstEndMonth) ||
+      (current.Month == timeZone.dstStartMonth && current.Day >= dstStartDay && current.Hour >= timeZone.dstStartHour) ||
+      (current.Month == timeZone.dstEndMonth && current.Day <= dstEndDay && current.Hour < timeZone.dstEndHour - 
+      timeZone.offset * 60 / SECS_PER_HOUR))
+    time = time + timeZone.dstOffset * 60;
 
   // Log details
   DEBUG_LOG(F("Received/Calculated Unix time: "));
   DEBUG_LOG_LN(time);
 
   return time;
+}
+
+// Function called to calculate the DST month offset
+byte calcDSTMonthOffset(byte month, byte weekdayNumber)
+{
+  // Check if we are dealing with the first, second, third, or fourth weekday of the month ...
+  if (weekdayNumber < 4)
+  {
+    switch (month)
+    {
+    case 0: // January
+      return 0;
+    case 1: // February
+      return 0;
+    case 2: // March
+      return 1;
+    case 3: // April
+      return 0;
+    case 4: // May
+      return 0;
+    case 5: // June
+      return 0;
+    case 6: // July
+      return 0;
+    case 7: // August
+      return 0;
+    case 8: // September
+      return 0;
+    case 9: // October
+      return 0;
+    case 10: // November
+      return 1;
+    default: // December
+      return 0;
+    }
+  }
+  // ... or the last weekday of the month
+  else
+  {
+    switch (month)
+    {
+    case 0: // January
+      return 0;
+    case 1: // February
+      return 0;
+    case 2: // March
+      return 4;
+    case 3: // April
+      return 0;
+    case 4: // May
+      return 0;
+    case 5: // June
+      return 0;
+    case 6: // July
+      return 0;
+    case 7: // August
+      return 0;
+    case 8: // September
+      return 0;
+    case 9: // October
+      return 1;
+    case 10: // November
+      return 0;
+    default: // December
+      return 0;
+    }
+  }
+}
+
+// Function called to calculate the number of days in a month
+byte calcMonthDays(unsigned short year, byte month)
+{
+  switch (month)
+  {
+  case 1: // February
+    if (year % 4 != 0) // Simplified formula accurante until 2099
+      return 28;
+    else
+      return 29; 
+  case 3: // April
+  case 5: // June
+  case 8: // September
+  case 10: // November
+    return 30;  
+  default: // January, March, May, July, August, October, December
+    return 31;
+  }
 }
 
 // Function called to initialize various global variables
@@ -729,8 +839,8 @@ void inline processWebRequest()
 
     // Check what kind of request this is
     bool responseSent = false;
-    if (strcasecmp(string, "/get?st") == 0 || strcasecmp(string, "/get?cv") == 0 ||
-        strcasecmp(string, "/get?ms") == 0 || strcasecmp(string, "/get?ts") == 0)
+    if (strcasecmp(string, "/get?st") == 0 || strcasecmp(string, "/get?ip") == 0 || strcasecmp(string, "/get?tz") == 0 ||
+        strcasecmp(string, "/get?cv") == 0 || strcasecmp(string, "/get?ms") == 0 ||  strcasecmp(string, "/get?ts") == 0)
     {
       // Send the headers
       client.println(F("HTTP/1.1 200 OK"));
@@ -744,6 +854,22 @@ void inline processWebRequest()
         unsigned long currentTime = now();
         client.write((byte *)&currentTime, sizeof(unsigned long));
         client.write((byte *)&gCurrentColorValues, sizeof(ColorValues));
+      }
+      /* else */ if (strcasecmp(string, "/get?ip") == 0) // ip = IP addresses
+      {
+        // Send the data
+        for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < ADDRESSES_LOCATION_END; ++i)
+        {
+          client.write(EEPROM.read(i));
+        }
+      }
+      /* else */ if (strcasecmp(string, "/get?tz") == 0) // tz = time zone
+      {
+        // Send the data
+        for (unsigned short i = TIME_ZONE_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
+        {
+          client.write(EEPROM.read(i));
+        }
       }
       /* else */ if (strcasecmp(string, "/get?cv") == 0) // cv = color values
       {
@@ -772,6 +898,28 @@ void inline processWebRequest()
 
       // Set the response sent flag
       responseSent = true;
+    }
+    else if (strcasecmp(string, "/set?ip") == 0) // ip = IP addresses
+    {
+      // Save the data
+      for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < ADDRESSES_LOCATION_END; ++i)
+      {
+        EEPROM.update(i, client.read());
+      }
+
+      // Set the reboot flag
+      gReboot = true;
+    }
+    else if (strcasecmp(string, "/set?tz") == 0) // tz = time zone
+    {
+      // Save the data
+      for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < ADDRESSES_LOCATION_END; ++i)
+      {
+        EEPROM.update(i, client.read());
+      }
+
+      // Set the reboot flag
+      gReboot = true;
     }
     else if (strcasecmp(string, "/set?cv") == 0) // cv = color values
     {
@@ -808,9 +956,16 @@ void inline processWebRequest()
     }
     else if (strcasecmp(string, "/reset") == 0)
     {
-      // Reset all saved settings
+      // Log details
       DEBUG_LOG_LN("Resetting saved settings ...");
-      for (unsigned short i = 0; i < TIMER_SCHEDULE_LOCATION_END; ++i)
+      
+      // Reset all saved settings
+      FLASH_ARRAY(byte, defaultSettings, 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90, 192, 168, 1, 254, 192, 168, 1, 1, 192, 168, 1, 1, 255, 255, 255, 0);
+      for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
+      {
+        EEPROM.update(i, defaultSettings[i - ADDRESSES_LOCATION_BEGIN]);
+      }
+      for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
       {
         EEPROM.update(i, 0);
       }
@@ -886,11 +1041,6 @@ void loop()
     asm volatile("jmp 0");
   }
 
-  // Check if the DHCP lease needs to be renewed
-  #ifndef DEBUG
-  Ethernet.maintain();
-  #endif
-
   // Process any web requests
   processWebRequest();
 
@@ -957,14 +1107,14 @@ void loop()
       SATPP_BLUE_UP_CODE, SATPP_WHITE_UP_CODE, SATPP_RED_DOWN_CODE, SATPP_GREEN_DOWN_CODE,
       SATPP_BLUE_DOWN_CODE, SATPP_WHITE_DOWN_CODE, SATPP_M1_CODE, SATPP_M2_CODE, SATPP_DAYLIGHT_CODE,
       SATPP_MOONLIGHT_CODE, SATPP_DYNAMIC_MOON_1_CODE, SATPP_DYNAMIC_MOON_2_CODE, SATPP_DYNAMIC_CLOUD_CODE,
-      SATPP_DYNAMIC_DAWN_DUSK_CODE, SATPP_DYNAMIC_STORM_1_CODE, SATPP_DYNAMIC_STORM_2_CODE, SATPP_DYNAMIC_STORM_3_CODE,
-      SATPP_DYNAMIC_STORM_4_CODE, SATP_ORANGE_CODE, SATP_BLUE_CODE, SATP_ROSE_CODE, SATP_POWER_CODE,
-      SATP_WHITE_CODE, SATP_FULL_SPEC_CODE, SATP_PURPLE_CODE, SATP_PLAY_PAUSE_CODE, SATP_RED_UP_CODE,
+      SATPP_DYNAMIC_DAWN_DUSK_CODE, SATPP_DYNAMIC_STORM_1_CODE, SATPP_DYNAMIC_STORM_2_CODE,
+      SATPP_DYNAMIC_STORM_3_CODE, SATPP_DYNAMIC_STORM_4_CODE, SATP_ORANGE_CODE, SATP_BLUE_CODE, SATP_ROSE_CODE, 
+      SATP_POWER_CODE, SATP_WHITE_CODE, SATP_FULL_SPEC_CODE, SATP_PURPLE_CODE, SATP_PLAY_PAUSE_CODE, SATP_RED_UP_CODE,
       SATP_GREEN_UP_CODE, SATP_BLUE_UP_CODE, SATP_WHITE_UP_CODE, SATP_RED_DOWN_CODE, SATP_GREEN_DOWN_CODE,
       SATP_BLUE_DOWN_CODE, SATP_WHITE_DOWN_CODE, SATP_M1_CODE, SATP_M2_CODE, SATP_M3_CODE, SATP_M4_CODE,
-      SATP_DYNAMIC_MOON_1_CODE, SATP_DYNAMIC_MOON_2_CODE, SATP_DYNAMIC_MOON_3_CODE, SATP_DYNAMIC_DAWN_DUSK_CODE, SATP_DYNAMIC_CLOUD_1_CODE,
-      SATP_DYNAMIC_CLOUD_2_CODE, SATP_DYNAMIC_CLOUD_3_CODE, SATP_DYNAMIC_CLOUD_4_CODE, SATP_DYNAMIC_STORM_1_CODE, SATP_DYNAMIC_STORM_2_CODE,
-      SATP_DYNAMIC_STORM_3_CODE, SATP_DYNAMIC_STORM_4_CODE);
+      SATP_DYNAMIC_MOON_1_CODE, SATP_DYNAMIC_MOON_2_CODE, SATP_DYNAMIC_MOON_3_CODE, SATP_DYNAMIC_DAWN_DUSK_CODE, 
+      SATP_DYNAMIC_CLOUD_1_CODE, SATP_DYNAMIC_CLOUD_2_CODE, SATP_DYNAMIC_CLOUD_3_CODE, SATP_DYNAMIC_CLOUD_4_CODE,
+      SATP_DYNAMIC_STORM_1_CODE, SATP_DYNAMIC_STORM_2_CODE, SATP_DYNAMIC_STORM_3_CODE, SATP_DYNAMIC_STORM_4_CODE);
 
   // Loop through the timer schedules
   for (byte i = 0; i < TIMER_SCHEDULE_COUNT; ++i)
