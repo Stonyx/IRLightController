@@ -180,12 +180,14 @@ struct TimeZone
   byte dstStartMonth; // 0: Janary ... 11: December
   byte dstStartWeekday; // 0: Sunday ... 6: Saturday
   byte dstStartWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
-  byte dstStartHour;
+  unsigned short dstStartMinutes; // After midnight
+  byte padding; // Inserted by the compiler but added explicitly to make sure this doesn't change unexpectedly with a newer compiler version
   signed short dstOffset; // In minutes
   byte dstEndMonth; // 0: Janary ... 11: December
   byte dstEndWeekday; // 0: Sunday ... 6: Saturday
   byte dstEndWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
-  byte dstEndHour;
+  unsigned short dstEndMinutes; // After midnight
+  byte morePadding; // Inserted by the compiler but added excplicitly to make sure this doesn't change unexpectedly with a newer compiler version
 };
 struct ColorValues
 {
@@ -353,27 +355,30 @@ unsigned long getNtpTime()
   // Close the UPD connection
   udp.stop();
 
-  // Get the current time elements
+  // Load the time zone data
+  TimeZone timeZone = EEPROM.get(TIME_ZONE_LOCATION_BEGIN, timeZone);
+
+  // Adjust the time for the epoch and the time zone
+  time = time - 2208988800UL + timeZone.offset * 60;
+
+  // Get the time elements
   TimeElements current;
   breakTime(time, current);
 
-  // Load the time zone and DST information
-  TimeZone timeZone = EEPROM.get(TIME_ZONE_LOCATION_BEGIN, timeZone);
-  byte dstStartDay = (timeZone.dstStartWeekdayNumber < 4 ? timeZone.dstStartWeekdayNumber * 7 : calcMonthDays(current.Year, current.Month)) - 
-      ((calcDSTMonthOffset(current.Month, timeZone.dstStartWeekdayNumber) + timeZone.dstStartWeekday + 
-      /* six days per year minus one day per leap year -> current.Year * 6 - current.Year / 4 == current.Year * 5 / 4 */ current.Year * 5 / 4) % 7);
-  byte dstEndDay = (timeZone.dstEndWeekdayNumber < 4 ? timeZone.dstEndWeekdayNumber * 7 : calcMonthDays(current.Year, current.Month)) -
-      ((calcDSTMonthOffset(current.Month, timeZone.dstEndWeekdayNumber) + timeZone.dstEndWeekday + 
-      /* six days per year minus one day per leap year -> current.Year * 6 - current.Year / 4 == current.Year * 5 / 4 */ current.Year * 5 / 4) % 7);  
- 
-  // Adjust the time for epoch and time zone
-  time = time - 2208988800UL + timeZone.offset * 60;
+  // Calculate the DST start and end days
+  byte dstStartDay = (timeZone.dstStartWeekdayNumber < 4 ? 7 + timeZone.dstStartWeekdayNumber * 7 : calcMonthDays(1970 + current.Year, current.Month)) -
+      (calcDSTMonthOffset(timeZone.dstStartMonth, timeZone.dstStartWeekdayNumber) + timeZone.dstStartWeekday +
+      /* six days per year minus one day per leap year -> (1970 + current.Year) * 6 - (1970 + current.Year) / 4 == (1970 + current.Year) * 5 / 4 */
+      (1970 + current.Year) * 5 / 4) % 7;
+  byte dstEndDay = (timeZone.dstEndWeekdayNumber < 4 ? 7 + timeZone.dstEndWeekdayNumber * 7 : calcMonthDays(1970 + current.Year, current.Month)) -
+      (calcDSTMonthOffset(timeZone.dstEndMonth, timeZone.dstEndWeekdayNumber) + timeZone.dstEndWeekday +
+      /* six days per year minus one day per leap year -> (1970 + current.Year) * 6 - (1970 + current.Year) / 4 == (1970 + current.Year) * 5 / 4 */
+      (1970 + current.Year) * 5 / 4) % 7;
 
-  // Adjust the time for DST
+  // Adjust the time for the DST
   if ((current.Month > timeZone.dstStartMonth && current.Month < timeZone.dstEndMonth) ||
-      (current.Month == timeZone.dstStartMonth && current.Day >= dstStartDay && current.Hour >= timeZone.dstStartHour) ||
-      (current.Month == timeZone.dstEndMonth && current.Day <= dstEndDay && current.Hour < timeZone.dstEndHour - 
-      timeZone.offset * 60 / SECS_PER_HOUR))
+      (current.Month == timeZone.dstStartMonth && current.Day >= dstStartDay && current.Hour * 60 + current.Minute >= timeZone.dstStartMinutes) ||
+      (current.Month == timeZone.dstEndMonth && current.Day <= dstEndDay && current.Hour * 60 + current.Minute < timeZone.dstEndMinutes - timeZone.dstOffset))
     time = time + timeZone.dstOffset * 60;
 
   // Log details
@@ -392,29 +397,24 @@ byte calcDSTMonthOffset(byte month, byte weekdayNumber)
     switch (month)
     {
     case 0: // January
-      return 0;
-    case 1: // February
-      return 0;
-    case 2: // March
-      return 1;
-    case 3: // April
-      return 0;
-    case 4: // May
-      return 0;
-    case 5: // June
-      return 0;
-    case 6: // July
-      return 0;
-    case 7: // August
-      return 0;
-    case 8: // September
-      return 0;
     case 9: // October
-      return 0;
+      return 4;
+    case 1: // February
+    case 2: // March
     case 10: // November
       return 1;
+    case 3: // April
+    case 6: // July
+      return 5;
+    case 4: // May
+      return 3;
+    case 5: // June
+      return 7;
+    case 7: // August
+      return 2;
+    case 8: // September
     default: // December
-      return 0;
+      return 6;
     }
   }
   // ... or the last weekday of the month
@@ -423,29 +423,24 @@ byte calcDSTMonthOffset(byte month, byte weekdayNumber)
     switch (month)
     {
     case 0: // January
-      return 0;
     case 1: // February
-      return 0;
-    case 2: // March
-      return 4;
-    case 3: // April
-      return 0;
-    case 4: // May
-      return 0;
-    case 5: // June
-      return 0;
-    case 6: // July
-      return 0;
-    case 7: // August
-      return 0;
-    case 8: // September
-      return 0;
     case 9: // October
       return 1;
-    case 10: // November
-      return 0;
+    case 2: // March
+    case 5: // June
+      return 4;
+    case 3: // April
     default: // December
-      return 0;
+      return 6;
+    case 4: // May
+      return 2;
+    case 6: // July
+      return 7;
+    case 7: // August
+    case 10: // November
+      return 3;
+    case 8: // September
+      return 5;
     }
   }
 }
@@ -963,10 +958,11 @@ void inline processWebRequest()
     else if (strcasecmp(string, "/reset") == 0)
     {
       // Log details
-      DEBUG_LOG_LN("Resetting saved settings ...");
-      
+      DEBUG_LOG_LN(F("Resetting saved settings ..."));
+
       // Reset all saved settings
-      FLASH_ARRAY(byte, defaultSettings, 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90, 192, 168, 1, 254, 192, 168, 1, 1, 192, 168, 1, 1, 255, 255, 255, 0);
+      FLASH_ARRAY(byte, defaultSettings, 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90, 192, 168, 1, 254, 192, 168, 1, 1, 192, 168, 1, 1, 255, 255, 255, 0,
+          0xD4, 0xFE, 2, 0, 1, 0x78, 0x00, 0, 0x3C, 0x00, 10, 0, 0, 0x78, 0x00, 0);
       for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
       {
         EEPROM.update(i, defaultSettings[i - ADDRESSES_LOCATION_BEGIN]);
