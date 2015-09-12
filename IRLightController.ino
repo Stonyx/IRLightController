@@ -180,10 +180,10 @@ struct TimeZone
   signed short dstOffset; // In minutes
   byte dstStartMonth; // 0: Janary ... 11: December
   byte dstEndMonth; // 0: Janary ... 11: December
-  byte dstStartWeekday; // 0: Sunday ... 6: Saturday
-  byte dstEndWeekday; // 0: Sunday ... 6: Saturday
   byte dstStartWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
   byte dstEndWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
+  byte dstStartWeekday; // 0: Sunday ... 6: Saturday
+  byte dstEndWeekday; // 0: Sunday ... 6: Saturday
   unsigned short dstStartMinutes; // After midnight
   unsigned short dstEndMinutes; // After midnight
 };
@@ -218,7 +218,7 @@ static bool gReboot = false;
 
 // Declare functions
 unsigned long getNtpTime();
-byte calcDSTDay(unsigned short year, byte month, byte weekday, byte weekdayNumber);
+byte calcDSTDay(unsigned short year, byte month, byte weekdayNumber, byte weekday);
 void initializeStuff();
 ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevOrCurrentSchedule);
 byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte day, MemorySchedule schedule);
@@ -231,7 +231,6 @@ void setup()
   // Initialize the serial communication for debugging
   DEBUG_SERIAL_BEGIN();
   DEBUG_LOG_LN(F("Starting IR Light Controller sketch ..."));
-  DEBUG_LOG_FREE_RAM();
 
   // Set the two SS pins to output mode and set them both to high
   pinMode(SD_CARD_PIN, OUTPUT);
@@ -363,8 +362,8 @@ unsigned long getNtpTime()
   breakTime(time, current);
 
   // Calculate the DST start and end days
-  byte dstStartDay = calcDSTDay(1970 + current.Year, timeZone.dstStartMonth, timeZone.dstStartWeekday, timeZone.dstStartWeekdayNumber);
-  byte dstEndDay = calcDSTDay(1970 + current.Year, timeZone.dstEndMonth, timeZone.dstEndWeekday, timeZone.dstEndWeekdayNumber); 
+  byte dstStartDay = calcDSTDay(1970 + current.Year, timeZone.dstStartMonth, timeZone.dstStartWeekdayNumber, timeZone.dstStartWeekday);
+  byte dstEndDay = calcDSTDay(1970 + current.Year, timeZone.dstEndMonth, timeZone.dstEndWeekdayNumber, timeZone.dstEndWeekday); 
 
   // Adjust the time for the DST
   if ((current.Month > timeZone.dstStartMonth && current.Month < timeZone.dstEndMonth) ||
@@ -380,7 +379,7 @@ unsigned long getNtpTime()
 }
 
 // Function called to calculate the DST day of the month
-byte calcDSTDay(unsigned short year, byte month, byte weekday, byte weekdayNumber)
+byte calcDSTDay(unsigned short year, byte month, byte weekdayNumber, byte weekday)
 {
   // Get the offset based on the month by first checking if we are dealing with the first, second, third, or fourth weekday of the month ...
   byte offset;
@@ -466,6 +465,8 @@ byte calcDSTDay(unsigned short year, byte month, byte weekday, byte weekdayNumbe
     length = 31;
   }
   
+  // This formula uses a simplified leap year calculation that is valid until 2099 and is accurate for all situations except 
+  //   when the day to calculate falls on February 29
   return (weekdayNumber < 4 ? 7 + weekdayNumber * 7 : length) - (offset + weekday +
       /* six days per year minus one day per leap year -> year * 6 - year / 4 == year * 5 / 4 */
       year * 5 / 4 - (year % 4 == 0 && month < 2 ? 1 : 0)) % 7;
@@ -968,7 +969,7 @@ void inline processWebRequest()
 
       // Reset all saved settings
       FLASH_ARRAY(byte, defaultSettings, 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90, 192, 168, 1, 254, 192, 168, 1, 1, 192, 168, 1, 1, 255, 255, 255, 0,
-          0xD4, 0xFE, 0x78, 0x00, 2, 10, 0, 0, 1, 0, 0x3C, 0x00, 0x78, 0x00);
+          0xD4, 0xFE, 0x3C, 0x00, 2, 10, 1, 0, 0, 0, 0x78, 0x00, 0x78, 0x00);
       for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
       {
         EEPROM.update(i, defaultSettings[i - ADDRESSES_LOCATION_BEGIN]);
@@ -977,6 +978,9 @@ void inline processWebRequest()
       {
         EEPROM.update(i, 0);
       }
+      
+      // Set the reboot falg
+      gReboot = true;
     }
     else if (strcasecmp(string, "/reboot") == 0)
     {
