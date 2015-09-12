@@ -33,7 +33,7 @@ $(document).ready(function()
 
         // Redirect to the index page
         window.location.href = "/index.htm";
-      }, 60000);
+      }, 30000);
     }).
     fail(function(jqXHR, textStatus, errorThrown)
     {
