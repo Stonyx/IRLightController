@@ -177,17 +177,15 @@
 struct TimeZone
 {
   signed short offset; // In minutes
-  byte dstStartMonth; // 0: Janary ... 11: December
-  byte dstStartWeekday; // 0: Sunday ... 6: Saturday
-  byte dstStartWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
-  unsigned short dstStartMinutes; // After midnight
-  byte padding; // Inserted by the compiler but added explicitly to make sure this doesn't change unexpectedly with a newer compiler version
   signed short dstOffset; // In minutes
+  byte dstStartMonth; // 0: Janary ... 11: December
   byte dstEndMonth; // 0: Janary ... 11: December
+  byte dstStartWeekday; // 0: Sunday ... 6: Saturday
   byte dstEndWeekday; // 0: Sunday ... 6: Saturday
+  byte dstStartWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
   byte dstEndWeekdayNumber; // 0: first, 1: second, 2: third, 3: fourth, 4: last
+  unsigned short dstStartMinutes; // After midnight
   unsigned short dstEndMinutes; // After midnight
-  byte morePadding; // Inserted by the compiler but added excplicitly to make sure this doesn't change unexpectedly with a newer compiler version
 };
 struct ColorValues
 {
@@ -220,8 +218,7 @@ static bool gReboot = false;
 
 // Declare functions
 unsigned long getNtpTime();
-byte calcDSTMonthOffset(byte month, byte weekdayNumber);
-byte calcMonthDays(unsigned short year, byte month);
+byte calcDSTDay(unsigned short year, byte month, byte weekday, byte weekdayNumber);
 void initializeStuff();
 ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevOrCurrentSchedule);
 byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte day, MemorySchedule schedule);
@@ -366,14 +363,8 @@ unsigned long getNtpTime()
   breakTime(time, current);
 
   // Calculate the DST start and end days
-  byte dstStartDay = (timeZone.dstStartWeekdayNumber < 4 ? 7 + timeZone.dstStartWeekdayNumber * 7 : calcMonthDays(1970 + current.Year, current.Month)) -
-      (calcDSTMonthOffset(timeZone.dstStartMonth, timeZone.dstStartWeekdayNumber) + timeZone.dstStartWeekday +
-      /* six days per year minus one day per leap year -> (1970 + current.Year) * 6 - (1970 + current.Year) / 4 == (1970 + current.Year) * 5 / 4 */
-      (1970 + current.Year) * 5 / 4) % 7;
-  byte dstEndDay = (timeZone.dstEndWeekdayNumber < 4 ? 7 + timeZone.dstEndWeekdayNumber * 7 : calcMonthDays(1970 + current.Year, current.Month)) -
-      (calcDSTMonthOffset(timeZone.dstEndMonth, timeZone.dstEndWeekdayNumber) + timeZone.dstEndWeekday +
-      /* six days per year minus one day per leap year -> (1970 + current.Year) * 6 - (1970 + current.Year) / 4 == (1970 + current.Year) * 5 / 4 */
-      (1970 + current.Year) * 5 / 4) % 7;
+  byte dstStartDay = calcDSTDay(1970 + current.Year, timeZone.dstStartMonth, timeZone.dstStartWeekday, timeZone.dstStartWeekdayNumber);
+  byte dstEndDay = calcDSTDay(1970 + current.Year, timeZone.dstEndMonth, timeZone.dstEndWeekday, timeZone.dstEndWeekdayNumber); 
 
   // Adjust the time for the DST
   if ((current.Month > timeZone.dstStartMonth && current.Month < timeZone.dstEndMonth) ||
@@ -388,33 +379,41 @@ unsigned long getNtpTime()
   return time;
 }
 
-// Function called to calculate the DST month offset
-byte calcDSTMonthOffset(byte month, byte weekdayNumber)
+// Function called to calculate the DST day of the month
+byte calcDSTDay(unsigned short year, byte month, byte weekday, byte weekdayNumber)
 {
-  // Check if we are dealing with the first, second, third, or fourth weekday of the month ...
+  // Get the offset based on the month by first checking if we are dealing with the first, second, third, or fourth weekday of the month ...
+  byte offset;
   if (weekdayNumber < 4)
   {
     switch (month)
     {
-    case 0: // January
-    case 9: // October
-      return 4;
+    case 7: // August
+      offset = 0;
+      break;
     case 1: // February
     case 2: // March
     case 10: // November
-      return 1;
-    case 3: // April
-    case 6: // July
-      return 5;
-    case 4: // May
-      return 3;
+      offset = 1;
+      break;
     case 5: // June
-      return 7;
-    case 7: // August
-      return 2;
+      offset = 2;
+      break;
     case 8: // September
     default: // December
-      return 6;
+      offset = 3;
+      break;
+    case 3: // April
+    case 6: // July
+      offset = 4;
+      break;
+    case 0: // January
+    case 9: // October
+      offset = 5;
+      break;
+    case 4: // May
+      offset = 6;
+      break;
     }
   }
   // ... or the last weekday of the month
@@ -422,47 +421,54 @@ byte calcDSTMonthOffset(byte month, byte weekdayNumber)
   {
     switch (month)
     {
+    case 6: // July
+      offset = 0;
+      break;
     case 0: // January
     case 1: // February
     case 9: // October
-      return 1;
-    case 2: // March
-    case 5: // June
-      return 4;
-    case 3: // April
-    default: // December
-      return 6;
+      offset = 1;
+      break;
     case 4: // May
-      return 2;
-    case 6: // July
-      return 7;
+      offset = 2;
+      break;
     case 7: // August
     case 10: // November
-      return 3;
+      offset = 3;
+      break;
+    case 2: // March
+    case 5: // June
+      offset = 4;
+      break;
     case 8: // September
-      return 5;
+      offset = 5;
+      break;
+    case 3: // April
+    default: // December
+      offset = 6;
     }
   }
-}
 
-// Function called to calculate the number of days in a month
-byte calcMonthDays(unsigned short year, byte month)
-{
+  // Get the month length
+  byte length;
   switch (month)
   {
   case 1: // February
-    if (year % 4 != 0) // Simplified formula accurante until 2099
-      return 28;
-    else
-      return 29; 
+    length = 28;
+    break; 
   case 3: // April
   case 5: // June
   case 8: // September
   case 10: // November
-    return 30;  
+    length = 30;
+    break;
   default: // January, March, May, July, August, October, December
-    return 31;
+    length = 31;
   }
+  
+  return (weekdayNumber < 4 ? 7 + weekdayNumber * 7 : length) - (offset + weekday +
+      /* six days per year minus one day per leap year -> year * 6 - year / 4 == year * 5 / 4 */
+      year * 5 / 4 - (year % 4 == 0 && month < 2 ? 1 : 0)) % 7;
 }
 
 // Function called to initialize various global variables
@@ -962,7 +968,7 @@ void inline processWebRequest()
 
       // Reset all saved settings
       FLASH_ARRAY(byte, defaultSettings, 0xDE, 0x12, 0x34, 0x56, 0x78, 0x90, 192, 168, 1, 254, 192, 168, 1, 1, 192, 168, 1, 1, 255, 255, 255, 0,
-          0xD4, 0xFE, 2, 0, 1, 0x78, 0x00, 0, 0x3C, 0x00, 10, 0, 0, 0x78, 0x00, 0);
+          0xD4, 0xFE, 0x78, 0x00, 2, 10, 0, 0, 1, 0, 0x3C, 0x00, 0x78, 0x00);
       for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
       {
         EEPROM.update(i, defaultSettings[i - ADDRESSES_LOCATION_BEGIN]);
