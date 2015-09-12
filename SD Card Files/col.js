@@ -30,18 +30,12 @@ $(document).ready(function()
     // Loop through all the color values
     for (var i = 1; i <= COLOR_VALUES_COUNT; ++i)
     {
-      // Get the color data from the array
+      // Get the color data from the array and set the fields
       var baseLocation = SIZE_OF_COLOR_VALUES * (i - 1)
-      var red = data[baseLocation];
-      var green = data[baseLocation + 1];
-      var blue = data[baseLocation + 2];
-      var white = data[baseLocation + 3];
-
-      // Set the fields
-      $("#red-" + i).val(red);
-      $("#green-" + i).val(green);
-      $("#blue-" + i).val(blue);
-      $("#white-" + i).val(white);
+      $("#red-" + i).val(data[baseLocation]);
+      $("#green-" + i).val(data[baseLocation + 1]);
+      $("#blue-" + i).val(data[baseLocation + 2]);
+      $("#white-" + i).val(data[baseLocation + 3]);
     }
 
     // Hide the AJAX animation
@@ -68,18 +62,12 @@ $(document).ready(function()
     // Loop through all the color values
     for (var i = 1; i <= COLOR_VALUES_COUNT; ++i)
     {
-      // Get the color data
-      var red = parseInt($("#red-" + i).val());
-      var green = parseInt($("#green-" + i).val());
-      var blue = parseInt($("#blue-" + i).val());
-      var white = parseInt($("#white-" + i).val());
-
-      // Add the data to the array
+      // Get the color data and add it to the array
       var baseLocation = SIZE_OF_COLOR_VALUES * (i - 1);
-      data[baseLocation] = red;
-      data[baseLocation + 1] = green;
-      data[baseLocation + 2] = blue;
-      data[baseLocation + 3] = white;
+      data[baseLocation] = parseInt($("#red-" + i).val());
+      data[baseLocation + 1] = parseInt($("#green-" + i).val());
+      data[baseLocation + 2] = parseInt($("#blue-" + i).val());
+      data[baseLocation + 3] = parseInt($("#white-" + i).val());
     }
 
     // Send the data

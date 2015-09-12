@@ -86,9 +86,9 @@ $(document).ready(function()
       var stopTime = startTime + duration;
       if (stopTime > 86400 /* 24 * 60 * 60 */)
         stopTime = stopTime - 86400;
-      stopHour = stopTime / 3600 /* 60 * 60 */ | 0x00000000;
-      stopMinute = (stopTime - stopHour * 3600 /* 60 * 60 */) / 60 | 0x00000000;
-      stopSecond = stopTime - stopHour * 3600 /* 60 * 60 */ - stopMinute * 60;
+      var stopHour = stopTime / 3600 /* 60 * 60 */ | 0x00000000;
+      var stopMinute = (stopTime - stopHour * 3600 /* 60 * 60 */) / 60 | 0x00000000;
+      var stopSecond = stopTime - stopHour * 3600 /* 60 * 60 */ - stopMinute * 60;
 
       // Set the fields
       $("#button-" + i).val(button);
