@@ -90,11 +90,15 @@ $(document).ready(function()
     }).
     done(function(data, textStatus, jqXHR)
     {
-      // Hide the AJAX animation
-      $("#ajax-loader").hide();
+      // Wait 30 seconds
+      setTimeout(function()
+      {
+        // Hide the AJAX animation
+        $("#ajax-loader").hide();
 
-      // Redirect to the index page
-      window.location.href = "/index.htm";
+        // Redirect to the index page
+        window.location.href = "/index.htm";
+      }, 30000);
     }).
     fail(function(jqXHR, textStatus, errorThrown)
     {

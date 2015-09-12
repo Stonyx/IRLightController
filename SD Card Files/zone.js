@@ -51,12 +51,12 @@ $(document).ready(function()
     var dstStartMinutes = 0x0000;
     for (var i = 10; i < 12; ++i)
     {
-      dstStartMinutes = dstStartMinutes | (data[i] * (8 * (i - 10)));
+      dstStartMinutes = dstStartMinutes | (data[i] << (8 * (i - 10)));
     }
     var dstEndMinutes = 0x0000;
     for (var i = 12; i < 14; ++i)
     {
-      dstEndMinutes = dstEndMinutes | (data[i] * (8 * (i - 12)));
+      dstEndMinutes = dstEndMinutes | (data[i] << (8 * (i - 12)));
     }
     
     // Calculate the time zone, DST offset, DST start time, and DST end time
@@ -66,7 +66,7 @@ $(document).ready(function()
     var dstEndTime = dstEndMinutes / 30;
     
     // Set the fields
-    $("#time-zone").val(offset);
+    $("#offset").val(offset);
     $("#dst-offset").val(dstOffset);
     $("#dst-start-month").val(dstStartMonth);
     $("#dst-start-weekday-number").val(dstStartWeekdayNumber);
@@ -99,16 +99,16 @@ $(document).ready(function()
     var data = new Uint8Array(SIZE_OF_TIME_ZONE);
 
     // Get the time zone data
-    var offset = parseInt($("#offset"));
-    var dstOffset = parseInt($("#dst-offset"));
-    var dstStartMonth = parseInt($("#dst-start-month"));
-    var dstStartWeekdayNumber = parseInt($("#dst-start-weekday-number"));
-    var dstStartWeekday = parseInt($("#dst-start-weekday"));
-    var dstStartTime = parseInt($("#dst-start-time"));
-    var dstEndMonth = parseInt($("#dst-end-month"));
-    var dstEndWeekdayNumber = parseInt($("#dst-end-weekday-number"));
-    var dstEndWeekday = parseInt($("#dst-end-weekday"));
-    var dstEndTime = parseInt($("#dst-end-time"));
+    var offset = parseInt($("#offset").val());
+    var dstOffset = parseInt($("#dst-offset").val());
+    var dstStartMonth = parseInt($("#dst-start-month").val());
+    var dstStartWeekdayNumber = parseInt($("#dst-start-weekday-number").val());
+    var dstStartWeekday = parseInt($("#dst-start-weekday").val());
+    var dstStartTime = parseInt($("#dst-start-time").val());
+    var dstEndMonth = parseInt($("#dst-end-month").val());
+    var dstEndWeekdayNumber = parseInt($("#dst-end-weekday-number").val());
+    var dstEndWeekday = parseInt($("#dst-end-weekday").val());
+    var dstEndTime = parseInt($("#dst-end-time").val());
         
     // Calculate the time zone, DST offset, DST start time, and DST end time
     offset = offset * 30;
@@ -150,11 +150,15 @@ $(document).ready(function()
     }).
     done(function(data, textStatus, jqXHR)
     {
-      // Hide the AJAX animation
-      $("#ajax-loader").hide();
+      // Wait 30 seconds
+      setTimeout(function()
+      {
+        // Hide the AJAX animation
+        $("#ajax-loader").hide();
 
-      // Redirect to the index page
-      window.location.href = "/index.htm";
+        // Redirect to the index page
+        window.location.href = "/index.htm";
+      }, 30000);
     }).
     fail(function(jqXHR, textStatus, errorThrown)
     {

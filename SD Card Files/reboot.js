@@ -25,7 +25,7 @@ $(document).ready(function()
     }).
     done(function(data, textStatus, jqXHR)
     {
-      // Wait 1 minute
+      // Wait 30 seconds
       setTimeout(function()
       {
         // Hide the AJAX animation

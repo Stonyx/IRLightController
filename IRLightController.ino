@@ -357,19 +357,23 @@ unsigned long getNtpTime()
   // Adjust the time for the epoch and the time zone
   time = time - 2208988800UL + timeZone.offset * 60;
 
-  // Get the time elements
-  TimeElements current;
-  breakTime(time, current);
-
-  // Calculate the DST start and end days
-  byte dstStartDay = calcDSTDay(1970 + current.Year, timeZone.dstStartMonth, timeZone.dstStartWeekdayNumber, timeZone.dstStartWeekday);
-  byte dstEndDay = calcDSTDay(1970 + current.Year, timeZone.dstEndMonth, timeZone.dstEndWeekdayNumber, timeZone.dstEndWeekday); 
-
-  // Adjust the time for the DST
-  if ((current.Month > timeZone.dstStartMonth && current.Month < timeZone.dstEndMonth) ||
-      (current.Month == timeZone.dstStartMonth && current.Day >= dstStartDay && current.Hour * 60 + current.Minute >= timeZone.dstStartMinutes) ||
-      (current.Month == timeZone.dstEndMonth && current.Day <= dstEndDay && current.Hour * 60 + current.Minute < timeZone.dstEndMinutes - timeZone.dstOffset))
-    time = time + timeZone.dstOffset * 60;
+  // Check if this time zone has DST
+  if (timeZone.dstOffset != 0)
+  {  
+    // Get the time elements
+    TimeElements current;
+    breakTime(time, current);
+  
+    // Calculate the DST start and end days
+    byte dstStartDay = calcDSTDay(1970 + current.Year, timeZone.dstStartMonth, timeZone.dstStartWeekdayNumber, timeZone.dstStartWeekday);
+    byte dstEndDay = calcDSTDay(1970 + current.Year, timeZone.dstEndMonth, timeZone.dstEndWeekdayNumber, timeZone.dstEndWeekday); 
+  
+    // Adjust the time for the DST
+    if ((current.Month > timeZone.dstStartMonth && current.Month < timeZone.dstEndMonth) ||
+        (current.Month == timeZone.dstStartMonth && current.Day >= dstStartDay && current.Hour * 60 + current.Minute >= timeZone.dstStartMinutes) ||
+        (current.Month == timeZone.dstEndMonth && current.Day <= dstEndDay && current.Hour * 60 + current.Minute < timeZone.dstEndMinutes - timeZone.dstOffset))
+      time = time + timeZone.dstOffset * 60;
+  }
 
   // Log details
   DEBUG_LOG(F("Received/Calculated Unix time: "));
@@ -921,7 +925,7 @@ void inline processWebRequest()
     else if (strcasecmp(string, "/set?tz") == 0) // tz = time zone
     {
       // Save the data
-      for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < ADDRESSES_LOCATION_END; ++i)
+      for (unsigned short i = TIME_ZONE_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
       {
         EEPROM.update(i, client.read());
       }
