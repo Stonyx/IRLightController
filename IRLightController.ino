@@ -26,11 +26,11 @@
 #define NEC
 
 // Include header files
+#include <avr/wdt.h>
 #include "Flash.h"
 #include <EEPROM.h>
 #include <SPI.h>
 #include <Ethernet.h>
-#include <Dhcp.h>
 #include <SD.h>
 #include <Time.h>
 #include <IRremote.h>
@@ -217,13 +217,21 @@ static unsigned long gClearScheduleCountersTime;
 static bool gReboot = false;
 
 // Declare functions
+void wdt_init() __attribute__((naked)) __attribute__((section(".init3")));
 unsigned long getNtpTime();
 byte calcDSTDay(unsigned short year, byte month, byte weekdayNumber, byte weekday);
 void initializeStuff();
-ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevOrCurrentSchedule);
+ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& enabledSchedules, byte& prevOrCurrentSchedule);
 byte calcMemoryScheduleCount(unsigned long time, unsigned long midnight, byte day, MemorySchedule schedule);
 byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day, TimerSchedule schedule);
 void inline processWebRequest();
+
+// Function called to reset the watchdog timer after a reboot
+void wdt_init()
+{
+  MCUSR = 0;
+  wdt_disable();
+}
 
 // Setup code
 void setup()
@@ -508,9 +516,15 @@ void initializeStuff()
         (calcTimerScheduleCount(time, midnight, day, schedule) << (i % 5) * 3);
   }
 
+  // Set the time for clearing the schedule counters
+  gClearScheduleCountersTime = nextSunday(time);
+
   // Set the current color values
+  byte enabledSchedules;
   byte prevOrCurrentSchedule;
-  gCurrentColorValues = calcColorValues(time, day, false, prevOrCurrentSchedule);
+  gCurrentColorValues = calcColorValues(time, day, false, enabledSchedules, prevOrCurrentSchedule);
+  if (enabledSchedules == 0)
+    return;
 
   // Load the previous schedule
   MemorySchedule schedule = EEPROM.get(MEMORY_SCHEDULE_LOCATION_BEGIN + sizeof(MemorySchedule) * prevOrCurrentSchedule,
@@ -528,9 +542,6 @@ void initializeStuff()
   IRsend irSend;
   irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | memoryIRCodes[schedule.button], 32);
   delay(333);
-
-  // Set the time for clearing the schedule counters
-  gClearScheduleCountersTime = nextSunday(time);
 }
 
 // Function called to calculate what the schedule count should be for the given memory schedule
@@ -678,9 +689,10 @@ byte calcTimerScheduleCount(unsigned long time, unsigned long midnight, byte day
 }
 
 // Function called to calculate what the current color values should be
-ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& prevOrCurrentSchedule)
+ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte& enabledSchedules, byte& prevOrCurrentSchedule)
 {
   // Prepare needed variables
+  enabledSchedules = 0;
   unsigned long prevScheduleStop = 0;
   byte nextSchedule;
   unsigned long nextScheduleStart = 0xFFFFFFFF;
@@ -699,6 +711,9 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
     else if (schedule.weekday == EVERYDAY || (schedule.weekday == MON_TO_FRI && day >= MONDAY && day <= FRIDAY) ||
         (schedule.weekday == SUN_AND_SAT && (day == SUNDAY || day == SATURDAY)))
       schedule.weekday = day;
+      
+    // Add this schedule to the enabled schedules counter
+    ++enabledSchedules;
 
     // Cacluate this schedule's start and stop times
     unsigned long start = previousMidnight((time - (day - schedule.weekday) * SECS_PER_DAY)) + schedule.timeSinceMidnight;
@@ -735,6 +750,10 @@ ColorValues calcColorValues(unsigned long time, byte day, bool includeFade, byte
       nextScheduleStart = start + SECS_PER_WEEK;
     }
   }
+
+  // Check if we have no enabled schedules
+  if (enabledSchedules == 0)
+    return gCurrentColorValues;
 
   // Read the previous or current schedule's color values
   ColorValues prevValues = EEPROM.get(COLOR_VALUES_LOCATION_BEGIN + sizeof(ColorValues) *
@@ -1053,8 +1072,12 @@ void loop()
   // Check the reboot flag
   if (gReboot == true)
   {
+    // Log details
     DEBUG_LOG_LN(F("Rebooting ..."));
-    asm volatile("jmp 0");
+    
+    // Enable the watchdog timer and wait for the reboot
+    wdt_enable(WDTO_250MS);
+    while (1) {}
   }
 
   // Process any web requests
@@ -1161,8 +1184,11 @@ void loop()
   }
 
   // Calculate what the current color values should be
+  byte enabledSchedules;
   byte prevOrCurrentSchedule;
-  ColorValues calcValues = calcColorValues(time, day, true, prevOrCurrentSchedule);
+  ColorValues calcValues = calcColorValues(time, day, true, enabledSchedules, prevOrCurrentSchedule);
+  if (enabledSchedules == 0)
+    return;
 
   // Prepare the IR code array
   FLASH_ARRAY(unsigned short, irCodes, ECO_RED_UP_CODE, ECO_RED_DOWN_CODE, ECO_GREEN_UP_CODE, ECO_GREEN_DOWN_CODE,
