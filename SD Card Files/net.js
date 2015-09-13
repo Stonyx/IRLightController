@@ -32,14 +32,14 @@ $(document).ready(function()
     {
       // Get the address data from the array and set the fields
       var baseLocation = (i == 1 ? 0 : SIZE_OF_MAC_ADDRESS + SIZE_OF_IP_ADDRESS * (i - 2));
-      $("#octet-1-" + i).val(data[baseLocation]);
-      $("#octet-2-" + i).val(data[baseLocation + 1]);
-      $("#octet-3-" + i).val(data[baseLocation + 2]);
-      $("#octet-4-" + i).val(data[baseLocation + 3]);
+      $("#octet-1-" + i).val(data[baseLocation].toString(i == 1 ? 16 : 10).toUpperCase());
+      $("#octet-2-" + i).val(data[baseLocation + 1].toString(i == 1 ? 16 : 10).toUpperCase());
+      $("#octet-3-" + i).val(data[baseLocation + 2].toString(i == 1 ? 16 : 10).toUpperCase());
+      $("#octet-4-" + i).val(data[baseLocation + 3].toString(i == 1 ? 16 : 10).toUpperCase());
       if (i == 1)
       {
-        $("#octet-5-" + i).val(data[baseLocation + 4]);
-        $("#octet-6-" + i).val(data[baseLocation + 5]);
+        $("#octet-5-" + i).val(data[baseLocation + 4].toString(16).toUpperCase());
+        $("#octet-6-" + i).val(data[baseLocation + 5].toString(16).toUpperCase());
       }
     }
 
@@ -68,15 +68,15 @@ $(document).ready(function()
     for (var i = 1; i <= ADDRESSES_COUNT; ++i)
     {
       // Get the address data and add it to the array
-      var baseLocation = (i == 1 ? 0 : SIZE_OF_MAC_ADDRESS + SIZE_OF_IP_ADDRESS * (i - 2));
-      data[baseLocation] = parseInt($("#octet-1-" + i).val());
-      data[baseLocation + 1] = parseInt($("#octet-2-" + i).val());
-      data[baseLocation + 2] = parseInt($("#octet-3-" + i).val());
-      data[baseLocation + 3] = parseInt($("#octet-4-" + i).val());
+      var baseLocation = i == 1 ? 0 : SIZE_OF_MAC_ADDRESS + SIZE_OF_IP_ADDRESS * (i - 2);
+      data[baseLocation] = parseInt($("#octet-1-" + i).val(), i == 1 ? 16 : 10);
+      data[baseLocation + 1] = parseInt($("#octet-2-" + i).val(), i == 1 ? 16 : 10);
+      data[baseLocation + 2] = parseInt($("#octet-3-" + i).val(), i == 1 ? 16 : 10);
+      data[baseLocation + 3] = parseInt($("#octet-4-" + i).val(), i == 1 ? 16 : 10);
       if (i == 1)
       {
-        data[baseLocation + 4] = parseInt($("#octet-5-1").val());
-        data[baseLocation + 5] = parseInt($("#octet-6-1").val());
+        data[baseLocation + 4] = parseInt($("#octet-5-1").val(), 16);
+        data[baseLocation + 5] = parseInt($("#octet-6-1").val(), 16);
       }
     }
 
