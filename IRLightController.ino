@@ -41,6 +41,7 @@
 #define NTP_MAX_POLLS 10
 #define NTP_POLL_INTERVAL 1000 // In milliseconds
 #define URL_MAX_LENGTH 50
+#define TCP_BUFFER_SIZE 128
 
 // Define IR code prefix
 #define CODE_PREFIX 0x20DF
@@ -1027,15 +1028,36 @@ void inline processWebRequest()
         /* else */ if (strcasecmp((char *)&string[stringLength - 4], ".png") == 0)
           type = F("image/png");
 
-        // Send the file
+        // Send the header
         client.println(F("HTTP/1.1 200 OK"));
         client.print(F("Content-Type: "));
         client.println(type);
         client.println(F("Cache-Control: max-age=604800"));
         client.println(F("Connection: close\n"));
+        
+        // Send the file
+        byte buffer[TCP_BUFFER_SIZE];
+        byte bytesRead = 0;
         while (file.available())
         {
-          client.write(file.read());
+          // Read a byte and increase the counter
+          buffer[bytesRead] = file.read();
+          ++bytesRead;
+          
+          // Check if the buffer is full
+          if (bytesRead == TCP_BUFFER_SIZE)
+          {
+            // Send the data
+            client.write(buffer, TCP_BUFFER_SIZE);
+            
+            // Reset the counter
+            bytesRead = 0;
+          }  
+        }
+        if (bytesRead > 0)
+        {
+          // Send any remaining data
+          client.write(buffer, bytesRead);
         }
         file.close();
 
