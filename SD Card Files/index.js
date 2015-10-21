@@ -33,6 +33,8 @@ $(document).ready(function()
     var months = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.",
         "Nov.", "Dec."];
     var hours = date.getUTCHours();
+    var minutes = date.getUTCMinutes().toString();
+    minutes = ('00' + minutes).substring(minutes.length);
     var amPM = "AM";
     if (hours == 0)
     {
@@ -49,8 +51,8 @@ $(document).ready(function()
     }
 
     // Display the time and color values
-    $("#time").html(months[date.getUTCMonth()] + " " + date.getUTCDate() + ", " + date.getUTCFullYear() +
-        " @ " + hours + ":" + date.getUTCMinutes() + amPM);
+    $("#time").html(months[date.getUTCMonth()] + " " + date.getUTCDate().toString() + ", " +
+        date.getUTCFullYear().toString() + " @ " + hours.toString() + ":" + minutes + amPM);
     $("#red").html(values[0]);
     $("#green").html(values[1]);
     $("#blue").html(values[2]);

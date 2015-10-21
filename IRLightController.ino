@@ -372,15 +372,15 @@ unsigned long getNtpTime()
     // Get the time elements
     TimeElements current;
     breakTime(time, current);
-  
+
     // Calculate the DST start and end days
     byte dstStartDay = calcDSTDay(1970 + current.Year, timeZone.dstStartMonth, timeZone.dstStartWeekdayNumber, timeZone.dstStartWeekday);
     byte dstEndDay = calcDSTDay(1970 + current.Year, timeZone.dstEndMonth, timeZone.dstEndWeekdayNumber, timeZone.dstEndWeekday); 
-  
+
     // Adjust the time for the DST
-    if ((current.Month > timeZone.dstStartMonth && current.Month < timeZone.dstEndMonth) ||
-        (current.Month == timeZone.dstStartMonth && current.Day >= dstStartDay && current.Hour * 60 + current.Minute >= timeZone.dstStartMinutes) ||
-        (current.Month == timeZone.dstEndMonth && current.Day <= dstEndDay && current.Hour * 60 + current.Minute < timeZone.dstEndMinutes - timeZone.dstOffset))
+    if ((current.Month - 1 > timeZone.dstStartMonth && current.Month - 1 < timeZone.dstEndMonth) ||
+        (current.Month - 1 == timeZone.dstStartMonth && current.Day - 1 >= dstStartDay && current.Hour * 60 + current.Minute >= timeZone.dstStartMinutes) ||
+        (current.Month - 1== timeZone.dstEndMonth && current.Day - 1 <= dstEndDay && current.Hour * 60 + current.Minute < timeZone.dstEndMinutes - timeZone.dstOffset))
       time = time + timeZone.dstOffset * 60;
   }
 
