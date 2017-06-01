@@ -22,8 +22,8 @@
 #endif
 #define DEBUG_LOG_FREE_RAM() DEBUG_LOG(F("Free RAM: ")); DEBUG_LOG_LN(FreeRam())
 
-// Define NEC so that only the NEC sections of the IRRemote library are included
-#define NEC
+// Define SEND_NEC so that only the NEC sections of the IRRemote library are included
+#define SEND_NEC
 
 // Include header files
 #include <avr/wdt.h>
@@ -33,6 +33,7 @@
 #include <Ethernet.h>
 #include <SD.h>
 #include <Time.h>
+#include <TimeLib.h>
 #include <IRremote.h>
 
 // Define settings
