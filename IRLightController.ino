@@ -543,7 +543,7 @@ void initializeStuff()
   // Send the IR signal
   IRsend irSend;
   irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | memoryIRCodes[schedule.button], 32);
-  delay(333);
+  delay(1000);
 }
 
 // Function called to calculate what the schedule count should be for the given memory schedule
@@ -860,9 +860,9 @@ void inline processWebRequest()
     }
 
     // Check if the root is being requested
-    if (strcasecmp(string, "/") == 0)
+    if (strcasecmp_P(string, (const char*)F("/")) == 0)
     {
-      strcpy(string, "/index.htm");
+      strcpy_P(string, (const char*)F("/index.htm"));
       stringLength = 10;
     }
 
@@ -872,8 +872,9 @@ void inline processWebRequest()
 
     // Check what kind of request this is
     bool responseSent = false;
-    if (strcasecmp(string, "/get?st") == 0 || strcasecmp(string, "/get?ip") == 0 || strcasecmp(string, "/get?tz") == 0 ||
-        strcasecmp(string, "/get?cv") == 0 || strcasecmp(string, "/get?ms") == 0 ||  strcasecmp(string, "/get?ts") == 0)
+    if (strcasecmp_P(string, (const char*)F("/get?st")) == 0 || strcasecmp_P(string, (const char*)F("/get?ip")) == 0 || 
+        strcasecmp_P(string, (const char*)F("/get?tz")) == 0 || strcasecmp_P(string, (const char*)F("/get?cv")) == 0 || 
+        strcasecmp_P(string, (const char*)F("/get?ms")) == 0 || strcasecmp_P(string, (const char*)F("/get?ts")) == 0)
     {
       // Send the headers
       client.println(F("HTTP/1.1 200 OK"));
@@ -881,14 +882,14 @@ void inline processWebRequest()
       client.println(F("Connection: close\n"));
 
       // Figure out which data is being requested
-      if (strcasecmp(string, "/get?st") == 0) // st = status
+      if (strcasecmp_P(string, (const char*)F("/get?st")) == 0) // st = status
       {
         // Send the data
         unsigned long currentTime = now();
         client.write((byte *)&currentTime, sizeof(unsigned long));
         client.write((byte *)&gCurrentColorValues, sizeof(ColorValues));
       }
-      /* else */ if (strcasecmp(string, "/get?ip") == 0) // ip = IP addresses
+      /* else */ if (strcasecmp_P(string, (const char*)F("/get?ip")) == 0) // ip = IP addresses
       {
         // Send the data
         for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < ADDRESSES_LOCATION_END; ++i)
@@ -896,7 +897,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      /* else */ if (strcasecmp(string, "/get?tz") == 0) // tz = time zone
+      /* else */ if (strcasecmp_P(string, (const char*)F("/get?tz")) == 0) // tz = time zone
       {
         // Send the data
         for (unsigned short i = TIME_ZONE_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
@@ -904,7 +905,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      /* else */ if (strcasecmp(string, "/get?cv") == 0) // cv = color values
+      /* else */ if (strcasecmp_P(string, (const char*)F("/get?cv")) == 0) // cv = color values
       {
         // Send the data
         for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
@@ -912,7 +913,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      /* else */ if (strcasecmp(string, "/get?ms") == 0) // ms = memory schedules
+      /* else */ if (strcasecmp_P(string, (const char*)F("/get?ms")) == 0) // ms = memory schedules
       {
         // Send the data
         for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
@@ -920,7 +921,7 @@ void inline processWebRequest()
           client.write(EEPROM.read(i));
         }
       }
-      /* else */ if (strcasecmp(string, "/get?ts") == 0) // ts = timer schedules
+      /* else */ if (strcasecmp_P(string, (const char*)F("/get?ts")) == 0) // ts = timer schedules
       {
         // Send the data
         for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
@@ -932,7 +933,7 @@ void inline processWebRequest()
       // Set the response sent flag
       responseSent = true;
     }
-    else if (strcasecmp(string, "/set?ip") == 0) // ip = IP addresses
+    else if (strcasecmp_P(string, (const char*)F("/set?ip")) == 0) // ip = IP addresses
     {
       // Save the data
       for (unsigned short i = ADDRESSES_LOCATION_BEGIN; i < ADDRESSES_LOCATION_END; ++i)
@@ -943,7 +944,7 @@ void inline processWebRequest()
       // Set the reboot flag
       gReboot = true;
     }
-    else if (strcasecmp(string, "/set?tz") == 0) // tz = time zone
+    else if (strcasecmp_P(string, (const char*)F("/set?tz")) == 0) // tz = time zone
     {
       // Save the data
       for (unsigned short i = TIME_ZONE_LOCATION_BEGIN; i < TIME_ZONE_LOCATION_END; ++i)
@@ -954,7 +955,7 @@ void inline processWebRequest()
       // Set the reboot flag
       gReboot = true;
     }
-    else if (strcasecmp(string, "/set?cv") == 0) // cv = color values
+    else if (strcasecmp_P(string, (const char*)F("/set?cv")) == 0) // cv = color values
     {
       // Save the data
       for (unsigned short i = COLOR_VALUES_LOCATION_BEGIN; i < COLOR_VALUES_LOCATION_END; ++i)
@@ -965,7 +966,7 @@ void inline processWebRequest()
       // Re-initalize stuff
       initializeStuff();
     }
-    else if (strcasecmp(string, "/set?ms") == 0) // ms = memory schedules
+    else if (strcasecmp_P(string, (const char*)F("/set?ms")) == 0) // ms = memory schedules
     {
       // Save the data
       for (unsigned short i = MEMORY_SCHEDULE_LOCATION_BEGIN; i < MEMORY_SCHEDULE_LOCATION_END; ++i)
@@ -976,7 +977,7 @@ void inline processWebRequest()
       // Re-initalize stuff
       initializeStuff();
     }
-    else if (strcasecmp(string, "/set?ts") == 0) // ts = timer schedules
+    else if (strcasecmp_P(string, (const char*)F("/set?ts")) == 0) // ts = timer schedules
     {
       // Save the data
       for (unsigned short i = TIMER_SCHEDULE_LOCATION_BEGIN; i < TIMER_SCHEDULE_LOCATION_END; ++i)
@@ -987,7 +988,7 @@ void inline processWebRequest()
       // Re-initalize stuff
       initializeStuff();
     }
-    else if (strcasecmp(string, "/reset") == 0)
+    else if (strcasecmp_P(string, (const char*)F("/reset")) == 0)
     {
       // Log details
       DEBUG_LOG_LN(F("Resetting saved settings ..."));
@@ -1007,7 +1008,7 @@ void inline processWebRequest()
       // Set the reboot falg
       gReboot = true;
     }
-    else if (strcasecmp(string, "/reboot") == 0)
+    else if (strcasecmp_P(string, (const char*)F("/reboot")) == 0)
     {
       // Set the reboot flag
       gReboot = true;
@@ -1020,13 +1021,13 @@ void inline processWebRequest()
       {
         // Figure out the content type
         const __FlashStringHelper* type;
-        if (strcasecmp((char *)&string[stringLength - 4], ".htm") == 0)
+        if (strcasecmp_P((char *)&string[stringLength - 4], (const char*)F(".htm")) == 0)
           type = F("text/html");
-        /* else */ if (strcasecmp((char*)&string[stringLength - 4], ".css") == 0)
+        /* else */ if (strcasecmp_P((char*)&string[stringLength - 4], (const char*)F(".css")) == 0)
           type = F("text/css");
-        /* else */ if (strcasecmp((char*)&string[stringLength - 3], ".js") == 0)
+        /* else */ if (strcasecmp_P((char*)&string[stringLength - 3], (const char*)F(".js")) == 0)
           type = F("text/javascript");
-        /* else */ if (strcasecmp((char *)&string[stringLength - 4], ".png") == 0)
+        /* else */ if (strcasecmp_P((char *)&string[stringLength - 4], (const char*)F(".png")) == 0)
           type = F("image/png");
 
         // Send the header
@@ -1147,7 +1148,7 @@ void loop()
       // Send the IR signal
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | memoryIRCodes[schedule.button], 32);
-      delay(333);
+      delay(1000);
    
       // Increment the counter
       gMemoryScheduleCounters[i / 2] = (gMemoryScheduleCounters[i / 2] & ~(0x0F << (i % 2) * 4)) |
@@ -1198,7 +1199,7 @@ void loop()
       // Send the IR signal
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | timerIRCodes[schedule.button], 32);
-      delay(333);
+      delay(1000);
 
       // Increment the counter
       gTimerScheduleCounters[i / 5] = (gTimerScheduleCounters[i / 5] & ~(0x0007 << (i % 5) * 3)) |
@@ -1233,7 +1234,7 @@ void loop()
       // Send the IR code, wait, and adjust the current color value
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | irCodes[i * 2], 32);
-      delay(333);
+      delay(1000);
       ++((byte*)&gCurrentColorValues)[i];
     }
     else if (((byte *)&calcValues)[i] < ((byte*)&gCurrentColorValues)[i])
@@ -1245,7 +1246,7 @@ void loop()
       // Send the IR code, wait, and adjust the current color value
       IRsend irSend;
       irSend.sendNEC((((unsigned long)CODE_PREFIX) << 16) | irCodes[i * 2 + 1], 32);
-      delay(333);
+      delay(1000);
       --((byte *)&gCurrentColorValues)[i];
     }
   }
